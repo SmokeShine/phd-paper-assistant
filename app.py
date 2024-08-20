@@ -148,22 +148,35 @@ def register():
     elif request.method == "GET":
         return render_template("register.html")
 
-
+conversation_history = []
 @app.route("/eli5", methods=["POST"])
 def eli5():
+    global conversation_history
 
     data = request.json
     selected_text = data.get("text", "")
     system = "You are a helpful assistant that provides simple and easy-to-understand explanations for complex topics. Your explanations can contain technical jargon to make the concepts clear."
+    
     if selected_text:
+        # Add system message if it's the start of a new conversation
+        if not conversation_history:
+            conversation_history.append({"role": "system", "content": system})
+        
+        # Add user's message to history
+        conversation_history.append({"role": "user", "content": selected_text})
+
+        # Get the response from the model
         response = ollama.chat(
             model="llama3.1",
-            messages=[
-                {"role": "user", "content": f"{system} Explain this concept: {selected_text}"}
-            ],
+            messages=conversation_history
         )
 
+        # Extract the response content
         explanation = response['message']['content'].strip()
+        
+        # Add the assistant's response to the conversation history
+        conversation_history.append({"role": "assistant", "content": explanation})
+        
         return jsonify({"explanation": explanation})
 
     return jsonify({"explanation": "No text provided"}), 400
