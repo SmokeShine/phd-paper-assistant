@@ -1,5 +1,3 @@
-// scripts.js
-
 // Function to position the context menu within the viewport and adjust position if necessary
 function positionContextMenu(contextMenu, x, y) {
     const menuWidth = contextMenu.offsetWidth;
@@ -21,9 +19,11 @@ document.addEventListener('mouseup', function (event) {
     const contextMenu = document.getElementById('context-menu');
 
     if (selectedText) {
-        // Show the context menu near the mouse cursor
+        // Show the context menu
         contextMenu.style.display = 'block';
-        positionContextMenu(contextMenu, event.pageX, event.pageY);
+
+        // If you want the menu to appear near the cursor (optional)
+        // positionContextMenu(contextMenu, event.pageX, event.pageY);
     } else {
         contextMenu.style.display = 'none';
     }
@@ -40,13 +40,13 @@ document.getElementById('eli5-button').addEventListener('click', function () {
             },
             body: JSON.stringify({ text: selectedText })
         })
-            .then(response => response.json())
-            .then(data => {
-                alert(`Response: ${data.explanation}`);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+        .then(response => response.json())
+        .then(data => {
+            alert(`Response: ${data.explanation}`);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
     }
     // Hide the context menu after processing
     document.getElementById('context-menu').style.display = 'none';
@@ -55,7 +55,7 @@ document.getElementById('eli5-button').addEventListener('click', function () {
 // Hide the context menu if clicked elsewhere
 document.addEventListener('click', function (event) {
     const contextMenu = document.getElementById('context-menu');
-    if (!contextMenu.contains(event.target)) {
+    if (!contextMenu.contains(event.target) && window.getSelection().toString().trim() === '') {
         contextMenu.style.display = 'none';
     }
 });

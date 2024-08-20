@@ -22,17 +22,17 @@
     <title>Hugging Face Daily Feed: {% block title %}{% endblock %}</title>
 
     <style>
-        /* Basic styling for the context menu */
+        /* Basic styling for the Ask Ollama button */
         #context-menu {
-            display: none;
-            /* Initially hidden */
-            position: absolute;
+            display: none; /* Initially hidden */
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
             background-color: white;
             border: 1px solid #ccc;
             padding: 10px;
             box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
-            z-index: 10000;
-            /* Ensure it's above other content */
+            z-index: 10000; /* Ensure it's above other content */
         }
 
         #context-menu button {
@@ -42,6 +42,7 @@
             padding: 10px 20px;
             cursor: pointer;
             box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -85,44 +86,28 @@
         {% block main %}{% endblock %}
     </main>
 
-    <!-- Context menu -->
+    <!-- Ask Ollama button -->
     <div id="context-menu">
         <button id="eli5-button">Ask Ollama</button>
     </div>
 
     <!-- External JavaScript -->
     <script>
-        // Function to position the context menu within the viewport and adjust position if necessary
-        function positionContextMenu(contextMenu, x, y) {
-            const menuWidth = contextMenu.offsetWidth;
-            const menuHeight = contextMenu.offsetHeight;
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-
-            // Adjust position if the menu is out of viewport
-            const adjustedX = (x + menuWidth > viewportWidth) ? viewportWidth - menuWidth - 10 : x;
-            const adjustedY = (y + menuHeight > viewportHeight) ? viewportHeight - menuHeight - 10 : y;
-
-            contextMenu.style.left = `${adjustedX}px`;
-            contextMenu.style.top = `${adjustedY}px`;
-        }
-
-        // Show the context menu when text is selected
-        document.addEventListener('mouseup', function (event) {
+        // Show the Ask Ollama button when text is selected
+        document.addEventListener('mouseup', function () {
             const selectedText = window.getSelection().toString().trim();
             const contextMenu = document.getElementById('context-menu');
 
             if (selectedText) {
-                // Show the context menu near the mouse cursor
+                // Show the context menu
                 contextMenu.style.display = 'block';
-                positionContextMenu(contextMenu, event.pageX, event.pageY);
             } else {
                 // Hide the context menu if no text is selected
                 contextMenu.style.display = 'none';
             }
         });
 
-        // Handle ELI5 button click
+        // Handle Ask Ollama button click
         document.getElementById('eli5-button').addEventListener('click', function () {
             const selectedText = window.getSelection().toString().trim();
             if (selectedText) {
