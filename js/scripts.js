@@ -42,7 +42,7 @@ document.getElementById('eli5-button').addEventListener('click', function () {
         })
             .then(response => response.json())
             .then(data => {
-                alert(`ELI5 Explanation: ${data.explanation}`);
+                alert(`Response: ${data.explanation}`);
             })
             .catch(error => {
                 console.error('Error:', error);

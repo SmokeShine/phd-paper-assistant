@@ -154,7 +154,7 @@ def eli5():
 
     data = request.json
     selected_text = data.get("text", "")
-    system = "You are a helpful assistant that provides simple and easy-to-understand explanations for complex topics. Your explanations should be free of technical jargon and should include relatable analogies or examples to make the concepts clear. Always assume the user is unfamiliar with the topic."
+    system = "You are a helpful assistant that provides simple and easy-to-understand explanations for complex topics. Your explanations can contain technical jargon to make the concepts clear."
     if selected_text:
         response = ollama.chat(
             model="llama3.1",
