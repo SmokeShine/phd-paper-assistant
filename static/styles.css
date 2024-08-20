@@ -1,26 +1,25 @@
-/* Size for brand */
-nav .navbar-brand
-{
+/* Brand size and colors */
+nav .navbar-brand {
     font-size: xx-large;
 }
 
-/* Colors for brand */
-nav .navbar-brand .blue
-{
+nav .navbar-brand .blue {
     color: #537fbe;
 }
-nav .navbar-brand .red
-{
+
+nav .navbar-brand .red {
     color: #ea433b;
 }
-nav .navbar-brand .yellow
-{
+
+nav .navbar-brand .yellow {
     color: #f5b82e;
 }
-nav .navbar-brand .green
-{
+
+nav .navbar-brand .green {
     color: #2e944b;
 }
+
+/* General body styling */
 body {
     background-color: #fff;
     color: #212529;
@@ -31,6 +30,7 @@ body {
     text-align: left;
 }
 
+/* Container styling */
 .container {
     margin-left: auto;
     margin-right: auto;
@@ -40,6 +40,7 @@ body {
     width: 90%;
 }
 
+/* Header styling */
 .header {
     background-color: #477bff;
     color: #fff;
@@ -48,23 +49,23 @@ body {
     text-align: center;
 }
 
+/* Section styling */
 .section {
-    padding-bottom: 1rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    padding-top: 0.5rem;
+    padding: 0.5rem 2rem 1rem;
 }
 
 .section:hover {
     background-color: #f5f5f5;
-    transition: color 2s ease-in-out, background-color 0.15s ease-in-out;
+    transition: background-color 0.15s ease-in-out;
 }
 
+/* Heading styles */
 h1 {
     font-family: 'Montserrat', sans-serif;
     font-size: 48px;
 }
 
+/* Button and input styles */
 button, input[type="submit"] {
     background-color: #d9edff;
     border: 1px solid transparent;
@@ -74,8 +75,12 @@ button, input[type="submit"] {
     line-height: 1.5;
     padding: 0.375rem 0.75rem;
     text-align: center;
-    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     vertical-align: middle;
+}
+
+button:hover, input[type="submit"]:hover {
+    background-color: #b3d4fc;
 }
 
 input[type="text"], input[type="number"] {
@@ -85,22 +90,56 @@ input[type="text"], input[type="number"] {
 
 input[type="text"]:hover, input[type="number"]:hover {
     background-color: #f5f5f5;
-    transition: color 2s ease-in-out, background-color 0.15s ease-in-out;
+    transition: background-color 0.15s ease-in-out;
 }
 
+/* Table styling */
 table {
     background-color: transparent;
     margin-bottom: 1rem;
     width: 100%;
+    word-wrap: break-word;
+    border-collapse: collapse;
 }
 
-table th,
-table td {
+thead {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: #fff;
+}
+
+table th, table td {
     padding: 0.75rem;
     vertical-align: middle;
+    text-align: left;
+    word-wrap: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    border: 1px solid #ddd;
 }
 
 tbody tr:nth-of-type(odd) {
-    background-color: rgb(179, 208, 255, 0.3)
+    background-color: rgba(179, 208, 255, 0.3);
 }
 
+
+/* Basic styling for the context menu */
+#context-menu {
+    display: none; /* Initially hidden */
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 5px;
+    box-shadow: 0px 2px 5px rgba(0,0,0,0.3);
+    z-index: 10000; /* Ensure it's above other content */
+}
+
+#context-menu button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    margin-bottom: 5px;
+}

@@ -56,11 +56,13 @@ def lookup_titles():
     """Look up quote for symbol."""
 
     # Prepare API request
-
+    end = datetime.datetime.now(pytz.timezone("US/Eastern"))
+    start = (end - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     url = (
         f"https://huggingface.co/api/daily_papers"
+        f"?date={start}"
     )
-
+    
     # Query API
     try:
         response = requests.get(
@@ -78,9 +80,11 @@ def lookup_titles():
         submittedBy = flatten_data['submittedBy.fullname']
         summary = flatten_data['paper.summary']
         upvotes = flatten_data['paper.upvotes']
+    
         papers_data=pd.concat([title,published_at,submittedBy,summary,upvotes],axis=1)
-        papers_data.columns = ['title','published_at','submittedBy','summary','upvotes']
-        return papers_data.to_html()
+        papers_data.columns = ['Title','Published','Submitted','Summary','Upvotes']
+        papers_data['Summary'] = papers_data['Summary'].str.replace('\n', '<br>')
+        return papers_data.to_html(classes='table table-striped', index=False,escape=False)
     except (KeyError, IndexError, requests.RequestException, ValueError):
         return None
 

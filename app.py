@@ -1,11 +1,12 @@
 import os
 
 import requests
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from cs50 import SQL
 from helpers import apology, login_required, lookup_titles
+import ollama
 
 # Configure application
 app = Flask(__name__)
@@ -38,9 +39,9 @@ def index():
     # too much memory usage. unlikely
     # Add one or more new tables to finance.db via which to keep track of the purchase.
     # it is going in db. so, I need a script to create a table
-#     CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, user_id INTEGER NOT NULL,company TEXT NOT NULL, qty NUMERIC NOT NULL, price NUMERIC NOT NULL, transaction_type text NOT NULL);
-# CREATE UNIQUE INDEX purchase_index ON purchase (id);
-# this has no post/get
+    #     CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, user_id INTEGER NOT NULL,company TEXT NOT NULL, qty NUMERIC NOT NULL, price NUMERIC NOT NULL, transaction_type text NOT NULL);
+    # CREATE UNIQUE INDEX purchase_index ON purchase (id);
+    # this has no post/get
 
     # is there a corresponding table in layout.html
     # birthday was passed as a dict
@@ -48,6 +49,7 @@ def index():
     if len(papers_data) == 0:
         return apology("No Data", 200)
     return render_template("index.html", papers_data=papers_data), 200
+
 
 @app.route("/history")
 @login_required
@@ -62,8 +64,8 @@ def history():
     # so there are 3 tables. all are empty
     # do i need to filter it for a user - how will i know the user
     transaction_data = db.execute(
-        """SELECT company,qty,price,transaction_type FROM transactions WHERE user_id = ? """, session[
-            "user_id"]
+        """SELECT company,qty,price,transaction_type FROM transactions WHERE user_id = ? """,
+        session["user_id"],
     )
     return render_template("history.html", transaction_data=transaction_data), 200
 
@@ -119,34 +121,27 @@ def logout():
     # Redirect user to login form
     return redirect("/")
 
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-    # birthdays = db.execute("SELECT * FROM birthdays")
-    # no need to render template. need to commit a user. need to render to show confirmation
-    # need to display form first with confirmation password
-    # do i need to create a new register.html. but then how will it get submitted on its own?
-    # Odds are you’ll want to create a new template (e.g., register.html) -cool
-    # hyperlinks are for GET, while button trigger post
-    # looks like i need to create html for all hyperlinks
     session.clear()
     if request.method == "POST":
-        if not request.form.get("username") or not request.form.get("password") or not request.form.get("confirmation"):
-            # import pdb;pdb.set_trace()
-            # it is looping back
+        if (
+            not request.form.get("username")
+            or not request.form.get("password")
+            or not request.form.get("confirmation")
+        ):
             return apology("missing detail", 400)
         if request.form.get("confirmation") != request.form.get("password"):
-            # import pdb;pdb.set_trace()
-            # it is looping back
             return apology("password not matching", 400)
         try:
-            # import pdb;pdb.set_trace()
-            user_id = db.execute("INSERT INTO users (username, hash) VALUES(?, ?)", request.form.get(
-                "username").lower(), generate_password_hash(request.form.get("password")))
+            user_id = db.execute(
+                "INSERT INTO users (username, hash) VALUES(?, ?)",
+                request.form.get("username").lower(),
+                generate_password_hash(request.form.get("password")),
+            )
             session["user_id"] = user_id
-            # import pdb;pdb.set_trace()
-            # it is correct. I am logged in, but there is new TODO
-            # how did the buttons change?
             return redirect("/"), 200
         except:
             return apology("user already exists", 400)
@@ -154,4 +149,21 @@ def register():
         return render_template("register.html")
 
 
+@app.route("/eli5", methods=["POST"])
+def eli5():
 
+    data = request.json
+    selected_text = data.get("text", "")
+    system = "You are a helpful assistant that provides simple and easy-to-understand explanations for complex topics. Your explanations should be free of technical jargon and should include relatable analogies or examples to make the concepts clear. Always assume the user is unfamiliar with the topic."
+    if selected_text:
+        response = ollama.chat(
+            model="llama3.1",
+            messages=[
+                {"role": "user", "content": f"{system} Explain this concept: {selected_text}"}
+            ],
+        )
+
+        explanation = response['message']['content'].strip()
+        return jsonify({"explanation": explanation})
+
+    return jsonify({"explanation": "No text provided"}), 400
