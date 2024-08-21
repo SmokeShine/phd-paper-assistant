@@ -1,155 +1,171 @@
+/* Context Menu Styling */
 #context-menu {
-    display: none;
-    /* Initially hidden */
+    display: none; /* Initially hidden */
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background-color: white;
-    border: 1px solid #ccc;
-    padding: 10px;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
-    z-index: 10000;
-    /* Ensure it's above other content */
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    padding: 15px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    z-index: 1050; /* Ensures it's above other content */
 }
 
 #context-menu input[type="text"] {
     width: 100%;
     margin-bottom: 10px;
-    padding: 5px;
-    border: 1px solid #ccc;
+    padding: 8px;
+    border: 1px solid #ced4da;
     border-radius: 4px;
+    box-shadow: inset 0px 1px 2px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.15s ease-in-out;
+}
+
+#context-menu input[type="text"]:focus {
+    border-color: #80bdff;
+    outline: none;
+    box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.25);
 }
 
 #context-menu button {
     background-color: #007bff;
-    color: white;
+    color: #ffffff;
     border: none;
     padding: 10px 20px;
     cursor: pointer;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
     border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
+#context-menu button:hover {
+    background-color: #0056b3;
+    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Ollama History Styling */
 #askollama-history {
-    max-height: 1000px; /* Adjust this value as needed */
+    max-height: 500px; /* Adjusted for better usability */
     overflow-y: auto;
-    border: 1px solid #ddd; /* Optional: adds a border to distinguish the history area */
-    padding: 10px; /* Optional: adds some padding inside the history area */
-    background-color: #f9f9f9; /* Optional: adds a background color */
+    border: 1px solid #dee2e6;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    margin-top: 10px;
 }
-/* Brand size and colors */
+
+/* Navbar Brand Styling */
 nav .navbar-brand {
-    font-size: xx-large;
+    font-size: 2.5rem;
+    font-weight: bold;
 }
 
-nav .navbar-brand .blue {
-    color: #537fbe;
-}
+nav .navbar-brand .blue { color: #537fbe; }
+nav .navbar-brand .red { color: #ea433b; }
+nav .navbar-brand .yellow { color: #f5b82e; }
+nav .navbar-brand .green { color: #2e944b; }
 
-nav .navbar-brand .red {
-    color: #ea433b;
-}
-
-nav .navbar-brand .yellow {
-    color: #f5b82e;
-}
-
-nav .navbar-brand .green {
-    color: #2e944b;
-}
-
-/* General body styling */
+/* Body Styling */
 body {
-    background-color: #fff;
+    background-color: #f7f7f7;
     color: #212529;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 1rem;
-    font-weight: 400;
-    line-height: 1.5;
+    line-height: 1.6;
     margin: 0;
     text-align: left;
 }
 
-/* Container styling */
+/* Container Styling */
 .container {
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 15px;
-    padding-right: 15px;
+    margin: 0 auto;
+    padding: 15px;
+    max-width: 1200px;
     text-align: center;
-    width: 90%;
 }
 
-/* Header styling */
+/* Header Styling */
 .header {
     background-color: #477bff;
-    color: #fff;
+    color: #ffffff;
+    padding: 2rem;
     margin-bottom: 2rem;
-    padding: 2rem 1rem;
+    border-radius: 8px;
     text-align: center;
 }
 
-/* Section styling */
+/* Section Styling */
 .section {
-    padding: 0.5rem 2rem 1rem;
+    padding: 1rem 2rem;
+    margin-bottom: 1rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    transition: background-color 0.3s ease-in-out;
 }
 
 .section:hover {
-    background-color: #f5f5f5;
-    transition: background-color 0.15s ease-in-out;
+    background-color: #f1f1f1;
 }
 
-/* Heading styles */
+/* Heading Styles */
 h1 {
     font-family: 'Montserrat', sans-serif;
-    font-size: 48px;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
 }
 
-/* Button and input styles */
+/* Button and Input Styles */
 button,
 input[type="submit"] {
-    background-color: #d9edff;
+    background-color: #007bff;
     border: 1px solid transparent;
     border-radius: 0.25rem;
-    font-size: 0.95rem;
-    font-weight: 400;
-    line-height: 1.5;
-    padding: 0.375rem 0.75rem;
-    text-align: center;
-    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    vertical-align: middle;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
 button:hover,
 input[type="submit"]:hover {
-    background-color: #b3d4fc;
+    background-color: #0056b3;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 input[type="text"],
 input[type="number"] {
     line-height: 1.8;
-    width: 25%;
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 
 input[type="text"]:hover,
 input[type="number"]:hover {
-    background-color: #f5f5f5;
-    transition: background-color 0.15s ease-in-out;
+    background-color: #f1f1f1;
+    border-color: #80bdff;
 }
 
-/* Table styling */
+/* Table Styling */
 table {
-    background-color: transparent;
-    margin-bottom: 1rem;
     width: 100%;
-    word-wrap: break-word;
+    margin-bottom: 1rem;
+    background-color: #ffffff;
     border-collapse: collapse;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 thead {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background-color: #fff;
+    background-color: #f7f7f7;
+    border-bottom: 2px solid #dee2e6;
 }
 
 table th,
@@ -157,12 +173,32 @@ table td {
     padding: 0.75rem;
     vertical-align: middle;
     text-align: left;
-    word-wrap: break-word;
-    white-space: normal;
-    overflow-wrap: break-word;
-    border: 1px solid #ddd;
+    border: 1px solid #dee2e6;
 }
 
 tbody tr:nth-of-type(odd) {
-    background-color: rgba(179, 208, 255, 0.3);
+    background-color: #f1f1f1;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    #context-menu {
+        width: calc(100% - 40px); /* Ensure context menu is responsive */
+        bottom: 10px;
+        right: 10px;
+        padding: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+        width: 100%;
+    }
+
+    nav .navbar-brand {
+        font-size: 1.75rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
 }

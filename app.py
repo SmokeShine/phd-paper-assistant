@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from cs50 import SQL
 from helpers import apology, login_required, lookup_titles
 import ollama
+import uuid
 
 # Configure application
 app = Flask(__name__)
@@ -19,6 +20,8 @@ Session(app)
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
 
+TAGS_FOLDER = 'tags'
+os.makedirs(TAGS_FOLDER, exist_ok=True)
 
 @app.after_request
 def after_request(response):
@@ -180,3 +183,38 @@ def eli5():
         return jsonify({"explanation": explanation})
 
     return jsonify({"explanation": "No text provided"}), 400
+
+@app.route('/save_markdown', methods=['POST'])
+def save_markdown():
+    data = request.json
+    content = data.get('content')
+    tags = data.get('tags')
+
+    if content:
+        # Generate a unique filename
+        filename = f"{uuid.uuid4()}.md"
+        filepath = os.path.join(TAGS_FOLDER, filename)
+
+        # Save the content as a markdown file
+        with open(filepath, 'w') as file:
+            if tags:
+                file.write(f"Tags: {tags}\n\n")
+            file.write(content)
+
+        return jsonify({"status": "success", "message": f"File saved as {filename}"}), 200
+    else:
+        return jsonify({"status": "error", "message": "No content provided"}), 400
+
+@app.route('/filter_by_tag', methods=['GET'])
+def filter_by_tag():
+    query_tag = request.args.get('tag')
+    matching_files = []
+
+    for filename in os.listdir(TAGS_FOLDER):
+        filepath = os.path.join(TAGS_FOLDER, filename)
+        with open(filepath, 'r') as file:
+            content = file.read()
+            if f"Tags: {query_tag}" in content:
+                matching_files.append(filename)
+
+    return jsonify({"files": matching_files}), 200

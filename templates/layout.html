@@ -4,75 +4,112 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="initial-scale=1, width=device-width">
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
-
-    <!-- Favicon -->
-    <link href="/static/favicon.ico" rel="icon">
-
+    
     <!-- Custom Stylesheet -->
     <link href="/static/styles.css" rel="stylesheet">
-
-    <title>Hugging Face Daily Feed: {% block title %}{% endblock %}</title>
-
-    <style>
-        /* Basic styling for the context menu */
-        #context-menu {
-            display: none; /* Initially hidden */
-            position: fixed; /* Fixed position to stay in the same place during scrolling */
-            bottom: 20px; /* Position it slightly above the bottom of the viewport */
-            right: 20px; /* Position it slightly to the left of the right edge of the viewport */
-            background-color: white;
-            border: 1px solid #ccc;
-            padding: 5px;
-            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
-            z-index: 10000; /* Ensure it's above other content */
-            cursor: default; /* Default cursor to indicate no dragging */
-        }
     
+    <!-- Favicon -->
+    <link href="/static/favicon.ico" rel="icon">
+    
+    <title>Hugging Face Daily Feed: {% block title %}{% endblock %}</title>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+        
+        .navbar {
+            background-color: #ffffff;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .navbar-brand span {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .nav-link {
+            font-weight: 500;
+            color: #007bff;
+        }
+        
+        .nav-link:hover {
+            color: #0056b3;
+        }
+        
+        header .alert {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        main {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        #context-menu {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 15px;
+            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+        }
+        
         #context-menu #selected-text {
             margin-bottom: 10px;
-            user-select: text; /* Allow text selection */
+            font-weight: 600;
+            color: #495057;
         }
-    
+        
         #context-menu #loading-message {
             display: none;
             color: #007bff;
-            user-select: text; /* Allow text selection */
         }
-    
-        #context-menu #askollama-container {
-            display: none;
-            margin-top: 10px;
-            user-select: text; /* Allow text selection */
-        }
-    
+        
         #context-menu #askollama-container textarea {
             width: 100%;
             box-sizing: border-box;
             resize: vertical;
-            user-select: text; /* Allow text selection in the textarea */
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            padding: 0.5rem;
         }
-    
-        #context-menu #askollama-container .ollama-history-entry {
-            margin-top: 10px;
-            user-select: text; /* Allow text selection for history entries */
+        
+        #context-menu .ollama-actions button {
+            margin-left: 5px;
+        }
+        
+        #context-menu .ollama-actions .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        
+        #context-menu .ollama-actions .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
         }
     </style>
 </head>
 
 <body>
     <!-- Navbar -->
-    <nav class="bg-light border navbar navbar-expand-md navbar-light">
+    <nav class="navbar navbar-expand-md">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
-                <span class="red">Daily Summary</span>
+                <span>Daily Summary</span>
             </a>
             <button aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler"
                 data-bs-target="#navbar" data-bs-toggle="collapse" type="button">
@@ -80,6 +117,10 @@
             </button>
             <div class="collapse navbar-collapse" id="navbar">
                 {% if session["user_id"] %}
+                <ul class="navbar-nav me-auto mt-2">
+                    <li class="nav-item"><a class="nav-link" href="/search tags">Search Tags</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
+                </ul>
                 <ul class="navbar-nav ms-auto mt-2">
                     <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
                 </ul>
@@ -95,14 +136,14 @@
 
     {% if get_flashed_messages() %}
     <header>
-        <div class="alert alert-primary mb-0 text-center" role="alert">
+        <div class="alert alert-primary text-center" role="alert">
             {{ get_flashed_messages() | join(" ") }}
         </div>
     </header>
     {% endif %}
 
     <!-- Main content -->
-    <main class="container py-5 text-center">
+    <main class="container text-center">
         {% block main %}{% endblock %}
     </main>
 
@@ -110,60 +151,75 @@
     <div id="context-menu">
         <div id="selected-text"></div>
         <div id="askollama-container">
-            <textarea id="custom-question" placeholder="Type your question here..."></textarea>
+            <textarea id="custom-question" class="form-control" placeholder="Type your question here..."></textarea>
             <div id="loading-message">Loading...</div>
             <div id="askollama-history"></div>
+            <div class="ollama-actions mt-3 text-end">
+                <input type="text" id="ollama-tags" class="form-control form-control-sm" placeholder="Enter tags (comma separated)">
+                <button id="save-ollama-content" class="btn btn-primary btn-sm">Save</button>
+                <button id="clear-ollama-content" class="btn btn-danger btn-sm">Clear</button>
+            </div>
         </div>
     </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
 
     <!-- External JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             let storedSelectedText = '';
-        
-            // Show context menu only when text is selected and right-clicked
+
             document.addEventListener('contextmenu', function (event) {
                 const selection = window.getSelection();
                 const selectedText = selection.toString().trim();
                 const contextMenu = document.getElementById('context-menu');
                 const customQuestionInput = document.getElementById('custom-question');
                 const selectedTextElement = document.getElementById('selected-text');
-        
+
                 if (selectedText) {
-                    event.preventDefault(); // Prevent the browser's default context menu
+                    event.preventDefault();
                     storedSelectedText = selectedText;
                     selectedTextElement.textContent = `Selected Text: "${selectedText}"`;
                     contextMenu.style.display = 'block';
-                    document.getElementById('askollama-container').style.display = 'block';
                     customQuestionInput.focus();
                 } else {
                     contextMenu.style.display = 'none';
-                    document.getElementById('askollama-container').style.display = 'none';
                 }
             });
-        
+
             document.getElementById('custom-question').addEventListener('keydown', function (event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
                     handleAskOllama();
                 }
             });
-        
+
+            document.getElementById('save-ollama-content').addEventListener('click', function () {
+                saveOllamaContent();
+            });
+
+            document.getElementById('clear-ollama-content').addEventListener('click', function () {
+                clearOllamaContent();
+            });
+
             function handleAskOllama() {
                 const customQuestion = document.getElementById('custom-question').value.trim();
                 const historyContainer = document.getElementById('askollama-history');
                 const loadingMessage = document.getElementById('loading-message');
                 let question;
-        
+
                 if (customQuestion) {
-                    question = `${customQuestion}:${storedSelectedText}`;
+                    question = `${customQuestion}: ${storedSelectedText}`;
                 } else if (storedSelectedText) {
                     question = `Explain: ${storedSelectedText}`;
                 }
-        
+
                 if (question) {
                     loadingMessage.style.display = 'block';
-        
+
                     fetch('/eli5', {
                         method: 'POST',
                         headers: {
@@ -175,8 +231,8 @@
                     .then(data => {
                         loadingMessage.style.display = 'none';
                         const newEntry = document.createElement('div');
-                        newEntry.className = 'ollama-history-entry';
-                        newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> ${data.explanation}<hr>`;
+                        newEntry.className = 'ollama-history-entry mt-3 p-2 border rounded';
+                        newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> ${data.explanation}`;
                         historyContainer.appendChild(newEntry);
                         document.getElementById('custom-question').value = '';
                         storedSelectedText = '';
@@ -187,15 +243,53 @@
                     });
                 }
             }
-        
+
+            function saveOllamaContent() {
+                const historyContainer = document.getElementById('askollama-history');
+                const content = historyContainer.innerText.trim();
+                const tags = document.getElementById('ollama-tags').value.trim();
+
+                if (content) {
+                    let markdownContent = '';
+                    if (tags) {
+                        markdownContent += `Tags: ${tags}\n\n`;
+                    }
+                    markdownContent += content.replace(/\n/g, '\n\n'); // Convert text to Markdown format
+
+                    fetch('/save_markdown', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ content: markdownContent, tags: tags })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert(data.message);
+                            clearOllamaContent();
+                        } else {
+                            alert('Error saving the file: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error saving the file. Please try again.');
+                    });
+                }
+            }
+
+            function clearOllamaContent() {
+                document.getElementById('askollama-history').innerHTML = '';
+                document.getElementById('ollama-tags').value = '';
+            }
+
             document.addEventListener('click', function (event) {
                 const contextMenu = document.getElementById('context-menu');
                 const askOllamaContainer = document.getElementById('askollama-container');
-        
-                // Hide the context menu only if the click is outside the askollama container and context menu
+
                 if (!askOllamaContainer.contains(event.target) && !contextMenu.contains(event.target)) {
                     contextMenu.style.display = 'none';
-                    askOllamaContainer.style.display = 'none';
                 }
             });
         });
