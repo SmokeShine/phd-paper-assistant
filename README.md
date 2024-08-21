@@ -2,6 +2,8 @@
 
 PhD Paper Assistant is a web-based tool designed to help PhD students navigate and understand complex research papers, particularly those filled with machine learning (ML) jargon. By leveraging the power of the Hugging Face blog and Llama 3.1, hosted on the Ollama server, this tool simplifies the process of reading and comprehending cutting-edge research.
 
+![alt text](image.png)
+
 ## Features
 
 ### 1. User Authentication
