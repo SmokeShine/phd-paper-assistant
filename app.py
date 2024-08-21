@@ -172,7 +172,7 @@ def register():
                 generate_password_hash(request.form.get("password")),
             )
             session["user_id"] = user_id
-            return redirect("/"), 200
+            return redirect("/")
         except:
             return apology("user already exists", 400)
     elif request.method == "GET":
@@ -185,7 +185,7 @@ def eli5():
 
     data = request.json
     selected_text = data.get("text", "")
-    system_message = "Use a formal tone. You are a PhD Student in Deep Learning. Your explanations can contain technical jargon to make the concepts clear."
+    system_message = "Use a formal tone and do not introduce yourself. You are a PhD Student in Deep Learning. Your explanations can contain technical jargon to make the concepts clear."
     
     if selected_text:
         # Initialize conversation history if it's the start of a new session

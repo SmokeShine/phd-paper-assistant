@@ -1,0 +1,4 @@
+# Hugging Face Daily Feed
+#### Video Demo:  [<URL HERE>](https://youtu.be/N2Hv2D4abLw)
+#### Description:
+It is a webserver that pull top papers from hugging face blog. Then there is llama3.1 hosted on ollama server. A user can create an account and interact with the summary of the papers by right clicking and asking question to llama3.1 to gain better understanding of the paper. Upon satisfactory understanding, it can be saved as a tag. There is a history which contains all the saved discussion. Search tab can be used to filter specific tags. For example, language model tag can pull all relevant conversation and then can be summarized and saved as zettel. All the zettels can then be searched with the prefix which can then be used to create a refined concept.

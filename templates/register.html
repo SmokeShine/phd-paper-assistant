@@ -1,21 +1,25 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Register
+Register
 {% endblock %}
 
 {% block main %}
-    <form action="/register" method="post">
+<form action="/register" method="post">
     <!-- submit button will trigger a post to register function -->
-        <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username" type="text">
-        </div>
-        <div class="mb-3">
-            <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
-        </div>
-        <div class="mb-3">
-            <input class="form-control mx-auto w-auto" name="confirmation" placeholder="Password(Confirm)" type="confirmation">
-        </div>
+    <div class="mb-3">
+        <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username"
+            type="text">
+    </div>
+    <div class="mb-3">
+        <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
+    </div>
+    <div class="mb-3">
+        <input class="form-control mx-auto w-auto" name="confirmation" placeholder="Password(Confirm)"
+            type="confirmation">
+    </div>
+    <div class="text-center"> <!-- Centering the button -->
         <button class="btn btn-primary" type="submit">Register</button>
-    </form>
+    </div>
+</form>
 {% endblock %}

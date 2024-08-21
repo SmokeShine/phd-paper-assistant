@@ -1,17 +1,20 @@
 {% extends "layout.html" %}
 <!-- this will replace the title and main in the layout.html dynamically -->
 {% block title %}
-    Log In
+Log In
 {% endblock %}
 
 {% block main %}
-    <form action="/login" method="post">
-        <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username" type="text">
-        </div>
-        <div class="mb-3">
-            <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
-        </div>
+<form action="/login" method="post">
+    <div class="mb-3">
+        <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username"
+            type="text">
+    </div>
+    <div class="mb-3">
+        <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
+    </div>
+    <div class="text-center"> <!-- Centering the button -->
         <button class="btn btn-primary" type="submit">Log In</button>
-    </form>
+    </div>
+</form>
 {% endblock %}

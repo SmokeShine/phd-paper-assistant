@@ -4,130 +4,44 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="initial-scale=1, width=device-width">
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    
+
     <!-- Custom Stylesheet -->
     <link href="/static/styles.css" rel="stylesheet">
-    
+
     <!-- Favicon -->
     <link href="/static/favicon.ico" rel="icon">
-    
+
     <title>Hugging Face Daily Feed: {% block title %}{% endblock %}</title>
-    
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #343a40;
-        }
-        
-        .navbar {
-            background-color: #ffffff;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        .navbar-brand span {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        
-        .nav-link {
-            font-weight: 500;
-            color: #007bff;
-        }
-        
-        .nav-link:hover {
-            color: #0056b3;
-        }
-        
-        header .alert {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        main {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        #context-menu {
-            display: none;
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-            padding: 15px;
-            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.15);
-            z-index: 10000;
-        }
-        
-        #context-menu #selected-text {
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        #context-menu #loading-message {
-            display: none;
-            color: #007bff;
-        }
-        
-        #context-menu #askollama-container textarea {
-            width: 100%;
-            box-sizing: border-box;
-            resize: vertical;
-            border: 1px solid #ced4da;
-            border-radius: 0.25rem;
-            padding: 0.5rem;
-        }
-        
-        #context-menu .ollama-actions button {
-            margin-left: 5px;
-        }
-        
-        #context-menu .ollama-actions .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
-        }
-        
-        #context-menu .ollama-actions .btn-danger {
-            background-color: #dc3545;
-            border-color: #dc3545;
-        }
-    </style>
 </head>
 
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-md">
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #343a40;">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <span>Daily Summary</span>
+            <a class="navbar-brand fw-bold" href="/" style="color: #ffffff;">
+                Hugging Face Daily Feed
             </a>
             <button aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler"
                 data-bs-target="#navbar" data-bs-toggle="collapse" type="button">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbar">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% if session["user_id"] %}
+                    <li class="nav-item"><a class="nav-link text-light" href="/search">Search Tags</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" href="/history">History</a></li>
+                    {% else %}
+                    <li class="nav-item"><a class="nav-link text-light" href="/register">Register</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" href="/login">Log In</a></li>
+                    {% endif %}
+                </ul>
                 {% if session["user_id"] %}
-                <ul class="navbar-nav me-auto mt-2">
-                    <li class="nav-item"><a class="nav-link" href="/search">Search Tags</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
-                </ul>
-                <ul class="navbar-nav ms-auto mt-2">
-                    <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
-                </ul>
-                {% else %}
-                <ul class="navbar-nav ms-auto mt-2">
-                    <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/login">Log In</a></li>
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link text-light" href="/logout">Log Out</a></li>
                 </ul>
                 {% endif %}
             </div>
@@ -135,28 +49,31 @@
     </nav>
 
     {% if get_flashed_messages() %}
-    <header>
-        <div class="alert alert-primary text-center" role="alert">
-            {{ get_flashed_messages() | join(" ") }}
-        </div>
-    </header>
+    <div class="alert alert-primary text-center mb-0" role="alert">
+        {{ get_flashed_messages() | join(" ") }}
+    </div>
     {% endif %}
 
     <!-- Main content -->
-    <main class="container text-center">
+    <main class="container my-4">
         {% block main %}{% endblock %}
     </main>
 
     <!-- Context menu -->
-    <div id="context-menu">
-        <div id="selected-text"></div>
-        <div id="askollama-container">
-            <textarea id="custom-question" class="form-control" placeholder="Type your question here..."></textarea>
-            <div id="loading-message">Loading...</div>
-            <div id="askollama-history"></div>
-            <div class="ollama-actions mt-3 text-end">
-                <input type="text" id="ollama-tags" class="form-control form-control-sm" placeholder="Enter tags (comma separated)">
-                <button id="save-ollama-content" class="btn btn-primary btn-sm">Save</button>
+    <div id="context-menu" class="shadow-lg p-4 rounded" style="max-width: 800px; margin: 20px auto;">
+        <div id="selected-text" class="mb-3"></div>
+        <div id="askollama-container" class="p-3"
+            style="background-color: #ffffff; border: 1px solid #ced4da; border-radius: 8px;">
+            <textarea id="custom-question" class="form-control mb-3" placeholder="Type your question here..."
+                style="height: 150px;"></textarea>
+            <div id="loading-message" class="text-center text-muted mb-3">Loading...</div>
+            <div id="askollama-history"
+                style="max-height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px;">
+            </div>
+            <div class="ollama-actions mt-3 d-flex justify-content-end">
+                <input type="text" id="ollama-tags" class="form-control form-control-sm me-2"
+                    placeholder="Enter tags (comma separated)">
+                <button id="save-ollama-content" class="btn btn-primary btn-sm me-2">Save</button>
                 <button id="clear-ollama-content" class="btn btn-danger btn-sm">Clear</button>
             </div>
         </div>
@@ -168,136 +85,7 @@
         crossorigin="anonymous"></script>
 
     <!-- External JavaScript -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            let storedSelectedText = '';
-
-            document.addEventListener('contextmenu', function (event) {
-                const selection = window.getSelection();
-                const selectedText = selection.toString().trim();
-                const contextMenu = document.getElementById('context-menu');
-                const customQuestionInput = document.getElementById('custom-question');
-                const selectedTextElement = document.getElementById('selected-text');
-
-                if (selectedText) {
-                    event.preventDefault();
-                    storedSelectedText = selectedText;
-                    selectedTextElement.textContent = `Selected Text: "${selectedText}"`;
-                    contextMenu.style.display = 'block';
-                    customQuestionInput.focus();
-                } else {
-                    contextMenu.style.display = 'none';
-                }
-            });
-
-            document.getElementById('custom-question').addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleAskOllama();
-                }
-            });
-
-            document.getElementById('save-ollama-content').addEventListener('click', function () {
-                saveOllamaContent();
-            });
-
-            document.getElementById('clear-ollama-content').addEventListener('click', function () {
-                clearOllamaContent();
-            });
-
-            function handleAskOllama() {
-                const customQuestion = document.getElementById('custom-question').value.trim();
-                const historyContainer = document.getElementById('askollama-history');
-                const loadingMessage = document.getElementById('loading-message');
-                let question;
-
-                if (customQuestion) {
-                    question = `${customQuestion}: ${storedSelectedText}`;
-                } else if (storedSelectedText) {
-                    question = `Explain: ${storedSelectedText}`;
-                }
-
-                if (question) {
-                    loadingMessage.style.display = 'block';
-
-                    fetch('/eli5', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ text: question })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        loadingMessage.style.display = 'none';
-                        const newEntry = document.createElement('div');
-                        newEntry.className = 'ollama-history-entry mt-3 p-2 border rounded';
-                        newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> ${data.explanation}`;
-                        historyContainer.appendChild(newEntry);
-                        document.getElementById('custom-question').value = '';
-                        storedSelectedText = '';
-                    })
-                    .catch(error => {
-                        loadingMessage.style.display = 'none';
-                        console.error('Error:', error);
-                    });
-                }
-            }
-
-            function saveOllamaContent() {
-                const historyContainer = document.getElementById('askollama-history');
-                const content = historyContainer.innerText.trim();
-                const tags = document.getElementById('ollama-tags').value.trim();
-            
-                // Check if tags are missing
-                if (!tags) {
-                    alert('Please enter tags before saving.');
-                    return; // Exit the function to prevent saving
-                }
-            
-                if (content) {
-                    let markdownContent = '';
-                    markdownContent += `Tags: ${tags}\n\n`; // Include tags in the markdown content
-                    markdownContent += content.replace(/\n/g, '\n\n'); // Convert text to Markdown format
-            
-                    fetch('/save_markdown', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ content: markdownContent, tags: tags })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            alert(data.message);
-                            clearOllamaContent();
-                        } else {
-                            alert('Error saving the file: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Error saving the file. Please try again.');
-                    });
-                }
-            }
-
-            function clearOllamaContent() {
-                document.getElementById('askollama-history').innerHTML = '';
-                document.getElementById('ollama-tags').value = '';
-            }
-
-            document.addEventListener('click', function (event) {
-                const contextMenu = document.getElementById('context-menu');
-                const askOllamaContainer = document.getElementById('askollama-container');
-
-                if (!askOllamaContainer.contains(event.target) && !contextMenu.contains(event.target)) {
-                    contextMenu.style.display = 'none';
-                }
-            });
-        });
-    </script>
+    <script src="/static/scripts/scripts.js"></script>
 </body>
 
 </html>

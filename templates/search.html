@@ -1,39 +1,39 @@
 {% extends "layout.html" %}
 <!-- this will replace the title and main in the layout.html dynamically -->
 {% block title %}
-    History
+History
 {% endblock %}
 
 {% block main %}
 
 <h1>Search Markdown Files</h1>
-        
+
 <!-- Search Form -->
 <form method="post" action="/search">
     <div class="mb-3">
         <label for="search_query" class="form-label">Search by Tags</label>
-        <input type="text" class="form-control" id="search_query" name="search_query" placeholder="Enter tags to search">
+        <input type="text" class="form-control" id="search_query" name="search_query"
+            placeholder="Enter tags to search">
     </div>
     <button type="submit" class="btn btn-primary">Search</button>
 </form>
 
 <div class="mt-4">
     {% if filtered_data %}
-        <h2>Search Results</h2>
-        <div class="list-group">
-            {% for item in filtered_data %}
-                <div class="list-group-item">
-                    <h5 class="mb-1">{{ item.name }}</h5>
-                    <div class="markdown-content">
-                        {{ item.content|safe }}
-                    </div>
-                </div>
-            {% endfor %}
+    <h2>Search Results</h2>
+    <div class="list-group">
+        {% for item in filtered_data %}
+        <div class="list-group-item">
+            <h5 class="mb-1">{{ item.name }}</h5>
+            <div class="markdown-content">
+                {{ item.content|safe }}
+            </div>
         </div>
+        {% endfor %}
+    </div>
     {% else %}
-        <p>No results found.</p>
+    <p>No results found.</p>
     {% endif %}
 </div>
 
 {% endblock %}
-

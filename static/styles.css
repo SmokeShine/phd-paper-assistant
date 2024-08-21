@@ -1,204 +1,115 @@
 /* Context Menu Styling */
 #context-menu {
-    display: none; /* Initially hidden */
+    display: none;
+    /* Initially hidden */
     position: fixed;
+    /* Fixed position */
     bottom: 20px;
-    right: 20px;
+    /* Distance from the bottom of the viewport */
+    left: 0;
+    /* Align to the left of the viewport */
+    right: 0;
+    /* Align to the right of the viewport */
     background-color: #ffffff;
+    /* White background */
     border: 1px solid #ced4da;
-    padding: 15px;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    /* Subtle border */
     border-radius: 8px;
-    z-index: 1050; /* Ensures it's above other content */
-}
-
-#context-menu input[type="text"] {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 8px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    box-shadow: inset 0px 1px 2px rgba(0, 0, 0, 0.1);
-    transition: border-color 0.15s ease-in-out;
-}
-
-#context-menu input[type="text"]:focus {
-    border-color: #80bdff;
-    outline: none;
-    box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.25);
-}
-
-#context-menu button {
-    background-color: #007bff;
-    color: #ffffff;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
-    border-radius: 5px;
-    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-
-#context-menu button:hover {
-    background-color: #0056b3;
-    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* Ollama History Styling */
-#askollama-history {
-    max-height: 500px; /* Adjusted for better usability */
-    overflow-y: auto;
-    border: 1px solid #dee2e6;
-    padding: 10px;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    margin-top: 10px;
-}
-
-/* Navbar Brand Styling */
-nav .navbar-brand {
-    font-size: 2.5rem;
-    font-weight: bold;
-}
-
-nav .navbar-brand .blue { color: #537fbe; }
-nav .navbar-brand .red { color: #ea433b; }
-nav .navbar-brand .yellow { color: #f5b82e; }
-nav .navbar-brand .green { color: #2e944b; }
-
-/* Body Styling */
-body {
-    background-color: #f7f7f7;
-    color: #212529;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 1rem;
-    line-height: 1.6;
-    margin: 0;
-    text-align: left;
-}
-
-/* Container Styling */
-.container {
+    /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    /* Subtle shadow */
+    padding: 20px;
+    width: calc(100% - 40px);
+    /* Full width minus padding */
+    max-width: 800px;
+    /* Maximum width constraint */
     margin: 0 auto;
-    padding: 15px;
-    max-width: 1200px;
-    text-align: center;
+    /* Center horizontally */
+    z-index: 1050;
+    /* Ensure it’s above other content */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    /* Smooth transition for showing/hiding */
 }
 
-/* Header Styling */
-.header {
-    background-color: #477bff;
-    color: #ffffff;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    border-radius: 8px;
-    text-align: center;
+/* Ensure context-menu appears */
+#context-menu.show {
+    display: block;
+    /* Show when active */
+    opacity: 1;
+    transform: translateY(0);
+    /* Reset transformation for visible state */
 }
 
-/* Section Styling */
-.section {
-    padding: 1rem 2rem;
-    margin-bottom: 1rem;
-    background-color: #ffffff;
-    border-radius: 8px;
-    transition: background-color 0.3s ease-in-out;
-}
-
-.section:hover {
-    background-color: #f1f1f1;
-}
-
-/* Heading Styles */
-h1 {
-    font-family: 'Montserrat', sans-serif;
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    font-weight: 700;
-}
-
-/* Button and Input Styles */
-button,
-input[type="submit"] {
-    background-color: #007bff;
-    border: 1px solid transparent;
-    border-radius: 0.25rem;
+/* For better readability of text area */
+#context-menu #custom-question {
+    height: 200px;
+    /* Increased height */
     font-size: 1rem;
-    padding: 0.5rem 1rem;
-    color: #ffffff;
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    /* Larger font size */
+    resize: vertical;
+    /* Allow vertical resizing */
+    margin-bottom: 15px;
+    /* Space below textarea */
 }
 
-button:hover,
-input[type="submit"]:hover {
-    background-color: #0056b3;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+/* Loading message styling */
+#context-menu #loading-message {
+    font-size: 1rem;
+    /* Consistent font size */
+    color: #6c757d;
+    /* Subtle color */
 }
 
-input[type="text"],
-input[type="number"] {
-    line-height: 1.8;
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
-}
-
-input[type="text"]:hover,
-input[type="number"]:hover {
-    background-color: #f1f1f1;
-    border-color: #80bdff;
-}
-
-/* Table Styling */
-table {
-    width: 100%;
-    margin-bottom: 1rem;
-    background-color: #ffffff;
-    border-collapse: collapse;
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-thead {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    background-color: #f7f7f7;
-    border-bottom: 2px solid #dee2e6;
-}
-
-table th,
-table td {
-    padding: 0.75rem;
-    vertical-align: middle;
-    text-align: left;
+/* Askollama history styling */
+#context-menu #askollama-history {
+    max-height: 400px;
+    /* Increased max-height */
+    overflow-y: auto;
+    /* Scrollable history */
+    padding: 15px;
+    background-color: #f8f9fa;
+    /* Light background */
     border: 1px solid #dee2e6;
+    /* Subtle border */
+    border-radius: 4px;
+    font-size: 1rem;
+    /* Larger font size */
+    margin-bottom: 20px;
+    /* Space below history */
 }
 
-tbody tr:nth-of-type(odd) {
-    background-color: #f1f1f1;
+/* Ollama actions styling */
+#context-menu .ollama-actions {
+    margin-top: 20px;
+    /* Space above actions */
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
-/* Responsive Adjustments */
+#context-menu .ollama-actions .btn {
+    font-size: 1rem;
+    /* Larger font size */
+    padding: 8px 16px;
+    /* Increased padding */
+}
+
+/* Responsive adjustments for smaller screens */
 @media (max-width: 768px) {
     #context-menu {
-        width: calc(100% - 40px); /* Ensure context menu is responsive */
+        width: calc(100% - 20px);
+        /* Adjust width for smaller screens */
         bottom: 10px;
+        /* Adjust distance from bottom */
+        left: 10px;
+        /* Adjust distance from left */
         right: 10px;
-        padding: 10px;
+        /* Adjust distance from right */
+        padding: 15px;
     }
 
-    input[type="text"],
-    input[type="number"] {
-        width: 100%;
-    }
-
-    nav .navbar-brand {
-        font-size: 1.75rem;
-    }
-
-    h1 {
-        font-size: 2rem;
+    #context-menu #custom-question {
+        height: 150px;
+        /* Adjust height for smaller screens */
     }
 }

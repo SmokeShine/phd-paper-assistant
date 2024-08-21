@@ -1,11 +1,11 @@
 {% extends "layout.html" %}
 <!-- this will replace the title and main in the layout.html dynamically -->
 {% block title %}
-    Hugging Face Daily Papers
+Hugging Face Daily Papers
 {% endblock %}
 
 {% block main %}
 
-    {{ papers_data | safe }}
+{{ papers_data | safe }}
 
 {% endblock %}
