@@ -8,6 +8,7 @@ from cs50 import SQL
 from helpers import apology, login_required, lookup_titles
 import ollama
 import uuid
+import markdown 
 
 # Configure application
 app = Flask(__name__)
@@ -35,19 +36,7 @@ def after_request(response):
 @app.route("/")
 @login_required
 def index():
-    """Show portfolio of stocks"""
-    # there is no index.html
-    # this needs to be populated after register
-    # which table stores the stock owned by the user. maybe it is going in the file system?
-    # too much memory usage. unlikely
-    # Add one or more new tables to finance.db via which to keep track of the purchase.
-    # it is going in db. so, I need a script to create a table
-    #     CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, user_id INTEGER NOT NULL,company TEXT NOT NULL, qty NUMERIC NOT NULL, price NUMERIC NOT NULL, transaction_type text NOT NULL);
-    # CREATE UNIQUE INDEX purchase_index ON purchase (id);
-    # this has no post/get
-
-    # is there a corresponding table in layout.html
-    # birthday was passed as a dict
+    """Show Hugging Face Papers"""
     papers_data = lookup_titles()
     if len(papers_data) == 0:
         return apology("No Data", 200)
@@ -57,21 +46,59 @@ def index():
 @app.route("/history")
 @login_required
 def history():
-    """Show history of transactions"""
-    # so this must be stored somewhere. is it db?
-    # sqlite> .schema
-    # CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT NOT NULL, hash TEXT NOT NULL, cash NUMERIC NOT NULL DEFAULT 10000.00);
-    # CREATE TABLE sqlite_sequence(name,seq);
-    # where is this used? this is auto index
-    # CREATE UNIQUE INDEX username ON users (username);
-    # so there are 3 tables. all are empty
-    # do i need to filter it for a user - how will i know the user
-    transaction_data = db.execute(
-        """SELECT company,qty,price,transaction_type FROM transactions WHERE user_id = ? """,
-        session["user_id"],
-    )
-    return render_template("history.html", transaction_data=transaction_data), 200
+    """Show history of md saved"""
+    TAGS_FOLDER = 'tags'
+    saved_data = []
 
+    if os.path.exists(TAGS_FOLDER):
+        for filename in os.listdir(TAGS_FOLDER):
+            if filename.endswith('.md'):
+                file_path = os.path.join(TAGS_FOLDER, filename)
+                with open(file_path, 'r') as file:
+                    # Extract the tags from the markdown file (assuming the first line is the tags)
+                    first_line = file.readline().strip()
+                    if first_line.startswith('Tags:'):
+                        tags = first_line.replace('Tags:', '').strip()
+                    else:
+                        tags = 'No tags'
+                    
+                    # Read the rest of the file content
+                    content = file.read()
+
+                # Convert Markdown to HTML
+                html_content = markdown.markdown(content)
+                
+                saved_data.append({'name': filename, 'tags': tags, 'content': html_content})
+
+    return render_template("history.html", saved_data=saved_data), 200
+
+
+@app.route("/search", methods=["GET", "POST"])
+@login_required
+def search():
+    """Search markdown files by tags"""
+    TAGS_FOLDER = 'tags'
+    filtered_data = []
+    
+    if request.method == 'POST':
+        search_query = request.form.get('search_query', '').strip().lower()
+        
+        if search_query:
+            if os.path.exists(TAGS_FOLDER):
+                for filename in os.listdir(TAGS_FOLDER):
+                    if filename.endswith('.md'):
+                        file_path = os.path.join(TAGS_FOLDER, filename)
+                        with open(file_path, 'r') as file:
+                            first_line = file.readline().strip()
+                            if first_line.startswith('Tags:'):
+                                tags = first_line.replace('Tags:', '').strip().lower()
+                                if search_query in tags:
+                                    content = file.read()
+                                    # Convert Markdown to HTML
+                                    html_content = markdown.markdown(content)
+                                    filtered_data.append({'name': filename, 'tags': tags, 'content': html_content})
+
+    return render_template("search.html", filtered_data=filtered_data), 200
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -105,13 +132,13 @@ def login():
         session["user_id"] = rows[0]["id"]
 
         # Redirect user to home page
-        return redirect("/"), 200
+        return redirect("/")
 
     # User reached route via GET (as by clicking a link or via redirect)
     elif request.method == "GET":
         return render_template("login.html")
     else:
-        return redirect("/"), 200
+        return redirect("/")
 
 
 @app.route("/logout")
@@ -158,29 +185,34 @@ def eli5():
 
     data = request.json
     selected_text = data.get("text", "")
-    system = "You are a helpful assistant that provides simple and easy-to-understand explanations for complex topics. Your explanations can contain technical jargon to make the concepts clear."
+    system_message = "Use a formal tone. You are a PhD Student in Deep Learning. Your explanations can contain technical jargon to make the concepts clear."
     
     if selected_text:
-        # Add system message if it's the start of a new conversation
+        # Initialize conversation history if it's the start of a new session
         if not conversation_history:
-            conversation_history.append({"role": "system", "content": system})
+            conversation_history.append({"role": "system", "content": system_message})
         
-        # Add user's message to history
+        # Add the user's message to the history
         conversation_history.append({"role": "user", "content": selected_text})
 
-        # Get the response from the model
-        response = ollama.chat(
-            model="llama3.1",
-            messages=conversation_history
-        )
-
-        # Extract the response content
-        explanation = response['message']['content'].strip()
+        try:
+            # Get the response from the model
+            response = ollama.chat(
+                model="llama3.1",
+                messages=conversation_history
+            )
+            
+            # Extract the response content
+            explanation = response.get('message', {}).get('content', '').strip()
+            
+            # Add the assistant's response to the conversation history
+            conversation_history.append({"role": "assistant", "content": explanation})
+            
+            return jsonify({"explanation": explanation})
         
-        # Add the assistant's response to the conversation history
-        conversation_history.append({"role": "assistant", "content": explanation})
-        
-        return jsonify({"explanation": explanation})
+        except Exception as e:
+            # Handle any errors from the model or request
+            return jsonify({"error": str(e)}), 500
 
     return jsonify({"explanation": "No text provided"}), 400
 
@@ -188,20 +220,29 @@ def eli5():
 def save_markdown():
     data = request.json
     content = data.get('content')
-    tags = data.get('tags')
+    tags = data.get('tags', '')  # Default to empty string if no tags are provided
 
     if content:
-        # Generate a unique filename
+        # Generate a unique filename with a UUID
         filename = f"{uuid.uuid4()}.md"
         filepath = os.path.join(TAGS_FOLDER, filename)
 
-        # Save the content as a markdown file
-        with open(filepath, 'w') as file:
-            if tags:
-                file.write(f"Tags: {tags}\n\n")
-            file.write(content)
+        try:
+            # Ensure the directory exists
+            os.makedirs(TAGS_FOLDER, exist_ok=True)
 
-        return jsonify({"status": "success", "message": f"File saved as {filename}"}), 200
+            # Save the content as a markdown file
+            with open(filepath, 'w') as file:
+                if tags:
+                    file.write(f"Tags: {tags}\n\n")
+                file.write(content)
+
+            return jsonify({"status": "success", "message": f"File saved as {filename}"}), 200
+        
+        except Exception as e:
+            # Handle any errors that occur during file writing
+            return jsonify({"status": "error", "message": f"An error occurred: {str(e)}"}), 500
+    
     else:
         return jsonify({"status": "error", "message": "No content provided"}), 400
 

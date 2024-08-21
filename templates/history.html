@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+<!-- this will replace the title and main in the layout.html dynamically -->
+{% block title %}
+History
+{% endblock %}
+
+{% block main %}
+
+<h1>History of Saved Markdown Files</h1>
+
+<div class="mt-4">
+    {% if saved_data %}
+        <div class="list-group">
+            {% for item in saved_data %}
+                <div class="list-group-item">
+                    <h5 class="mb-1">{{ item.name }}</h5>
+                    <p class="mb-1">Tags: {{ item.tags }}</p>
+                    <div class="markdown-content">
+                        {{ item.content|safe }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No saved data found.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

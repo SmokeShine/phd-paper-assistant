@@ -118,7 +118,7 @@
             <div class="collapse navbar-collapse" id="navbar">
                 {% if session["user_id"] %}
                 <ul class="navbar-nav me-auto mt-2">
-                    <li class="nav-item"><a class="nav-link" href="/search tags">Search Tags</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/search">Search Tags</a></li>
                     <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
                 </ul>
                 <ul class="navbar-nav ms-auto mt-2">
@@ -248,14 +248,18 @@
                 const historyContainer = document.getElementById('askollama-history');
                 const content = historyContainer.innerText.trim();
                 const tags = document.getElementById('ollama-tags').value.trim();
-
+            
+                // Check if tags are missing
+                if (!tags) {
+                    alert('Please enter tags before saving.');
+                    return; // Exit the function to prevent saving
+                }
+            
                 if (content) {
                     let markdownContent = '';
-                    if (tags) {
-                        markdownContent += `Tags: ${tags}\n\n`;
-                    }
+                    markdownContent += `Tags: ${tags}\n\n`; // Include tags in the markdown content
                     markdownContent += content.replace(/\n/g, '\n\n'); // Convert text to Markdown format
-
+            
                     fetch('/save_markdown', {
                         method: 'POST',
                         headers: {
