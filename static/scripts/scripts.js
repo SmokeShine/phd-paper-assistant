@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData();
         formData.append('pdfFile', file);
 
-        fetch('/upload', {
+        fetch('/upload_pdf', {
             method: 'POST',
             body: formData,
         })
@@ -196,6 +196,14 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             if (data.success) {
                 status.textContent = 'File uploaded successfully!';
+                // Create an iframe to render the PDF
+                const iframe = document.createElement('iframe');
+                iframe.src = data.file_url;
+                iframe.width = '100%';
+                iframe.height = '600px';
+        
+        // Append iframe to a container in the DOM
+        document.getElementById('pdf-container').appendChild(iframe);
             } else {
                 status.textContent = 'File upload failed.';
             }

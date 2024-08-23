@@ -94,6 +94,44 @@
     /* Increased padding */
 }
 
+/* Upload Area Styles */
+.upload-area {
+    border: 2px dashed #6c757d;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    background-color: #ffffff;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.upload-area:hover {
+    background-color: #f1f3f5;
+}
+
+.upload-area p {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #6c757d;
+}
+
+/* Drag Over Effect */
+.upload-area.drag-over {
+    border-color: #007bff;
+    background-color: #e9ecef;
+}
+/* Upload Status Styles */
+#upload-status {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+    margin-top: 1rem;
+}
+/* Hide File Input */
+#pdfFileInput {
+    display: none;
+}
+
 /* Responsive adjustments for smaller screens */
 @media (max-width: 768px) {
     #context-menu {

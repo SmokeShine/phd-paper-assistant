@@ -2,8 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
+# Cleanup
 *.db
+*.pdf
 flask_session/
+
 # C extensions
 *.so
 

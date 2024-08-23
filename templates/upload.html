@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Upload Pdf
+{% endblock %}
+
+{% block main %}
+<div class="container my-4">
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="upload" role="tabpanel">
+            <div id="drag-drop-area" class="upload-area mt-3">
+                <p>Drag & Drop your PDF here or click to upload</p>
+                <input type="file" id="pdfFileInput" class="d-none" accept="application/pdf">
+            </div>
+            <div id="upload-status" class="text-center mt-3"></div>
+        </div>
+    </div>
+</div>
+<div id="pdf-container"></div>
+{% endblock %}
