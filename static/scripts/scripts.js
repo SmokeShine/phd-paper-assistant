@@ -44,16 +44,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const historyContainer = document.getElementById('askollama-history');
         const loadingMessage = document.getElementById('loading-message');
         let question;
-    
+
         if (customQuestion) {
             question = `${customQuestion}: ${storedSelectedText}`;
         } else if (storedSelectedText) {
             question = `Explain: ${storedSelectedText}`;
         }
-    
+
         if (question) {
             loadingMessage.style.display = 'block';
-    
+
             fetch('/eli5', {
                 method: 'POST',
                 headers: {
@@ -64,18 +64,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => response.json())
                 .then(data => {
                     loadingMessage.style.display = 'none';
-    
+
                     // Create new Q&A entry
                     const newEntry = document.createElement('div');
                     newEntry.className = 'ollama-history-entry mt-3 p-2 border rounded';
                     newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> ${data.explanation}`;
-                    
+
                     // Append new entry to the history container
                     historyContainer.appendChild(newEntry);
-    
+
                     // Scroll to the newly added entry
                     newEntry.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
+
                     // Clear input and reset stored text
                     document.getElementById('custom-question').value = '';
                     storedSelectedText = '';
@@ -178,16 +178,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleFileUpload(files) {
         if (files.length === 0) return;
-
+    
         const file = files[0];
         if (file.type !== 'application/pdf') {
             status.textContent = 'Please upload a PDF file.';
             return;
         }
-
+    
         const formData = new FormData();
         formData.append('pdfFile', file);
-
+    
         fetch('/upload_pdf', {
             method: 'POST',
             body: formData,
@@ -196,16 +196,25 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             if (data.success) {
                 status.textContent = 'File uploaded successfully!';
+    
                 // Create an iframe to render the PDF
                 const iframe = document.createElement('iframe');
                 iframe.src = data.file_url;
                 iframe.width = '100%';
                 iframe.height = '600px';
-        
-        // Append iframe to a container in the DOM
-        document.getElementById('pdf-container').appendChild(iframe);
+    
+                // Append iframe to a container in the DOM
+                document.getElementById('pdf-container').innerHTML = '';  // Clear previous content
+                document.getElementById('pdf-container').appendChild(iframe);
+    
+                // Update text container
+                const textContainer = document.getElementById('text-container');
+                const textElement = document.createElement('pre');
+                textElement.textContent = data.extracted_text || 'No text extracted from the PDF.';
+                textContainer.innerHTML = '';  // Clear previous content
+                textContainer.appendChild(textElement);
             } else {
-                status.textContent = 'File upload failed.';
+                status.textContent = 'File upload failed: ' + data.message;
             }
         })
         .catch(error => {
