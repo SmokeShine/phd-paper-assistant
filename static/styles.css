@@ -132,6 +132,35 @@
     display: none;
 }
 
+/* Text Container Styles */
+#text-container {
+    background-color: #f8f9fa; /* Light background for readability */
+    border: 1px solid #dee2e6; /* Subtle border for definition */
+    border-radius: 8px; /* Rounded corners */
+    padding: 30px; /* Increased padding around content */
+    margin-top: 20px; /* Space above the container */
+    max-width: 1200px; /* Increased maximum width */
+    margin-left: auto; /* Center horizontally */
+    margin-right: auto; /* Center horizontally */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Light shadow for depth */
+    height: 600px; /* Increased fixed height to enable scrolling */
+    overflow-y: auto; /* Vertical scrollbar when content overflows */
+}
+
+#text-container h3 {
+    color: #333; /* Dark color for heading */
+    margin-bottom: 20px; /* Space below the heading */
+    font-size: 1.75rem; /* Larger font size for better visibility */
+}
+
+#text-container pre {
+    white-space: pre-wrap; /* Wrap long lines for better readability */
+    word-wrap: break-word; /* Break long words to avoid overflow */
+    font-size: 1.1rem; /* Slightly larger font size */
+    color: #212529; /* Dark color for text */
+    line-height: 1.6; /* Improved line spacing */
+}
+
 /* Responsive adjustments for smaller screens */
 @media (max-width: 768px) {
     #context-menu {

@@ -9,7 +9,8 @@ from pandas import json_normalize
 import pandas as pd
 from flask import redirect, render_template, request, session
 from functools import wraps
-
+import fitz
+from langchain_community.document_loaders import PyMuPDFLoader
 
 def apology(message, code=400):
     """Render message as an apology to user."""
@@ -89,3 +90,10 @@ def lookup_titles():
         return None
 
 
+def extract_text_from_pdf(pdf_path):
+    loader = PyMuPDFLoader(pdf_path)
+    data = loader.load()
+    text = ""
+    for page in data:
+        text += page.page_content
+    return text

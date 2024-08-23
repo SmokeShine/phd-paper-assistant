@@ -1,11 +1,12 @@
 import os
-
+import fitz
+from langchain_community.document_loaders import PyMuPDFLoader
 import requests
 from flask import Flask, flash, redirect, render_template, request, session, jsonify,send_from_directory
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from cs50 import SQL
-from helpers import apology, login_required, lookup_titles
+from helpers import apology, login_required, lookup_titles, extract_text_from_pdf
 import ollama
 import uuid
 import markdown 
@@ -279,14 +280,23 @@ def upload_pdf():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(file_path)  # Save the file to the server
 
+            # Extract text from the PDF
+            text = extract_text_from_pdf(file_path)
+            
             # Return the file's URL for rendering
-            return jsonify({'success': True, 'message': 'Upload successful!', 'file_url': f'/uploads/{file.filename}'})
+            return jsonify({
+            'success': True,
+            'message': 'Upload successful!',
+            'file_url': f'/uploads/{file.filename}',
+            'extracted_text': text
+        })
         else:
             return jsonify({'success': False, 'message': 'Invalid file type'}), 400
     elif request.method == "GET":
-        return render_template("upload.html")
+        return render_template("upload.html", text=None)
     
 @app.route('/uploads/<filename>')
 @login_required
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
