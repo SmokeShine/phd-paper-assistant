@@ -140,4 +140,69 @@ document.addEventListener('DOMContentLoaded', function () {
             contextMenu.style.display = 'none';
         }
     });
+
+    // Drag-and-Drop PDF Upload Area
+    const dropArea = document.getElementById('drag-drop-area');
+    const fileInput = document.getElementById('pdfFileInput');
+    const status = document.getElementById('upload-status');
+
+    // Prevent default behavior for dragover and drop events
+    dropArea.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropArea.classList.add('bg-light');
+    });
+
+    dropArea.addEventListener('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropArea.classList.remove('bg-light');
+    });
+
+    dropArea.addEventListener('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropArea.classList.remove('bg-light');
+        const files = e.dataTransfer.files;
+        handleFileUpload(files);
+    });
+
+    dropArea.addEventListener('click', function () {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function () {
+        const files = fileInput.files;
+        handleFileUpload(files);
+    });
+
+    function handleFileUpload(files) {
+        if (files.length === 0) return;
+
+        const file = files[0];
+        if (file.type !== 'application/pdf') {
+            status.textContent = 'Please upload a PDF file.';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('pdfFile', file);
+
+        fetch('/upload', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                status.textContent = 'File uploaded successfully!';
+            } else {
+                status.textContent = 'File upload failed.';
+            }
+        })
+        .catch(error => {
+            status.textContent = 'Error uploading file.';
+            console.error('Error:', error);
+        });
+    }
 });
