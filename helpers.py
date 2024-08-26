@@ -60,10 +60,10 @@ def lookup_titles():
 
     # Prepare API request
     end = datetime.datetime.now(pytz.timezone("US/Eastern"))
-    start = (end - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    start = (end - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
     url = (
         f"https://huggingface.co/api/daily_papers"
-        f"?date={start}"
+        f"?date>{start}"
     )
     
     # Query API
@@ -87,6 +87,7 @@ def lookup_titles():
         papers_data=pd.concat([title,published_at,submittedBy,summary,upvotes],axis=1)
         papers_data.columns = ['Title','Published','Submitted','Summary','Upvotes']
         papers_data['Summary'] = papers_data['Summary'].str.replace('\n', '<br>')
+        papers_data.sort_values(by="Upvotes",ascending=False,inplace=True)
         return papers_data.to_html(classes='table table-striped', index=False,escape=False)
     except (KeyError, IndexError, requests.RequestException, ValueError):
         return None
