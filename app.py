@@ -237,8 +237,8 @@ def save_markdown():
 
             # Save the content as a markdown file
             with open(filepath, 'w') as file:
-                if tags:
-                    file.write(f"Tags: {tags}\n\n")
+                # if tags:
+                #     file.write(f"Tags: {tags}\n\n")
                 file.write(content)
 
             return jsonify({"status": "success", "message": f"File saved as {filename}"}), 200
@@ -263,6 +263,43 @@ def filter_by_tag():
                 matching_files.append(filename)
 
     return jsonify({"files": matching_files}), 200
+
+@app.route("/write_notes", methods=["GET", "POST"])
+@login_required
+def write_notes():
+    if request.method == "POST":
+        content = request.form.get('content')
+        tags = request.form.get('tags', '')  # Default to empty string if no tags are provided
+
+        if content:
+            # Generate a unique filename with a UUID
+            filename = f"{uuid.uuid4()}.md"
+            filepath = os.path.join(TAGS_FOLDER, filename)
+
+            try:
+                # Ensure the directory exists
+                os.makedirs(TAGS_FOLDER, exist_ok=True)
+
+                # Save the content as a markdown file
+                with open(filepath, 'w') as file:
+                    if tags:
+                        file.write(f"Tags: {tags}\n\n")
+                    file.write(content)
+
+                flash(f"File saved as {filename}", "success")
+                return redirect("/history")
+
+            except Exception as e:
+                # Handle any errors that occur during file writing
+                flash(f"An error occurred: {str(e)}", "danger")
+                return redirect("/write_notes")
+        
+        else:
+            flash("No content provided", "warning")
+            return redirect("/write_notes")
+    
+    elif request.method == "GET":
+        return render_template("write_notes.html", text=None)
 
 @app.route("/upload_pdf", methods=["GET", "POST"])
 @login_required
@@ -300,3 +337,61 @@ def upload_pdf():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+@app.route('/edit_note/<filename>', methods=['GET', 'POST'])
+@login_required
+def edit_note(filename):
+    file_path = os.path.join(TAGS_FOLDER, filename)
+    
+    if request.method == 'POST':
+        content = request.form.get('content')
+        tags = request.form.get('tags', '')
+
+        if content:
+            try:
+                with open(file_path, 'w') as file:
+                    if tags:
+                        file.write(f"Tags: {tags}\n\n")
+                    file.write(content)
+                flash('Note updated successfully!', 'success')
+                return redirect('/history')
+            except Exception as e:
+                flash(f'Error updating note: {str(e)}', 'danger')
+                return redirect(f'/edit_note/{filename}')
+        else:
+            flash('No content provided', 'warning')
+            return redirect(f'/edit_note/{filename}')
+    
+    elif request.method == 'GET':
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+                # Extract tags from the first line
+                tags_line = lines[0].strip()
+                if tags_line.startswith('Tags:'):
+                    tags = tags_line.replace('Tags:', '').strip()
+                else:
+                    tags = ''
+
+                # Extract content (excluding tags line)
+                content = ''.join(lines[1:])  # Join remaining lines as content
+            
+            return render_template('edit_note.html', filename=filename, content=content, tags=tags)
+        else:
+            flash('File not found', 'danger')
+            return redirect('/history')
+        
+@app.route('/delete_note/<filename>', methods=['POST'])
+@login_required
+def delete_note(filename):
+    file_path = os.path.join(TAGS_FOLDER, filename)
+
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            flash('Note deleted successfully!', 'success')
+        else:
+            flash('File not found', 'danger')
+    except Exception as e:
+        flash(f'Error deleting note: {str(e)}', 'danger')
+
+    return redirect('/history')

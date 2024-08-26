@@ -1,87 +1,58 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+}
+
 /* Context Menu Styling */
 #context-menu {
     display: none;
-    /* Initially hidden */
     position: fixed;
-    /* Fixed position */
     bottom: 20px;
-    /* Distance from the bottom of the viewport */
     left: 0;
-    /* Align to the left of the viewport */
     right: 0;
-    /* Align to the right of the viewport */
     background-color: #ffffff;
-    /* White background */
     border: 1px solid #ced4da;
-    /* Subtle border */
     border-radius: 8px;
-    /* Rounded corners */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    /* Subtle shadow */
     padding: 20px;
     width: calc(100% - 40px);
-    /* Full width minus padding */
     max-width: 800px;
-    /* Maximum width constraint */
     margin: 0 auto;
-    /* Center horizontally */
     z-index: 1050;
-    /* Ensure it’s above other content */
     transition: opacity 0.3s ease, transform 0.3s ease;
-    /* Smooth transition for showing/hiding */
 }
 
-/* Ensure context-menu appears */
 #context-menu.show {
     display: block;
-    /* Show when active */
     opacity: 1;
     transform: translateY(0);
-    /* Reset transformation for visible state */
 }
 
-/* For better readability of text area */
 #context-menu #custom-question {
     height: 200px;
-    /* Increased height */
     font-size: 1rem;
-    /* Larger font size */
     resize: vertical;
-    /* Allow vertical resizing */
     margin-bottom: 15px;
-    /* Space below textarea */
 }
 
-/* Loading message styling */
 #context-menu #loading-message {
     font-size: 1rem;
-    /* Consistent font size */
     color: #6c757d;
-    /* Subtle color */
 }
 
-/* Askollama history styling */
 #context-menu #askollama-history {
     max-height: 400px;
-    /* Increased max-height */
     overflow-y: auto;
-    /* Scrollable history */
     padding: 15px;
     background-color: #f8f9fa;
-    /* Light background */
     border: 1px solid #dee2e6;
-    /* Subtle border */
     border-radius: 4px;
     font-size: 1rem;
-    /* Larger font size */
     margin-bottom: 20px;
-    /* Space below history */
 }
 
-/* Ollama actions styling */
 #context-menu .ollama-actions {
     margin-top: 20px;
-    /* Space above actions */
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -89,9 +60,7 @@
 
 #context-menu .ollama-actions .btn {
     font-size: 1rem;
-    /* Larger font size */
     padding: 8px 16px;
-    /* Increased padding */
 }
 
 /* Upload Area Styles */
@@ -115,68 +84,48 @@
     color: #6c757d;
 }
 
-/* Drag Over Effect */
 .upload-area.drag-over {
     border-color: #007bff;
     background-color: #e9ecef;
 }
-/* Upload Status Styles */
+
 #upload-status {
     font-size: 1.2rem;
     font-weight: bold;
     color: #333;
     margin-top: 1rem;
 }
-/* Hide File Input */
+
 #pdfFileInput {
     display: none;
 }
 
 /* Text Container Styles */
 #text-container {
-    background-color: #f8f9fa; /* Light background for readability */
-    border: 1px solid #dee2e6; /* Subtle border for definition */
-    border-radius: 8px; /* Rounded corners */
-    padding: 30px; /* Increased padding around content */
-    margin-top: 20px; /* Space above the container */
-    max-width: 1200px; /* Increased maximum width */
-    margin-left: auto; /* Center horizontally */
-    margin-right: auto; /* Center horizontally */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Light shadow for depth */
-    height: 600px; /* Increased fixed height to enable scrolling */
-    overflow-y: auto; /* Vertical scrollbar when content overflows */
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 30px;
+    margin-top: 20px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    height: 600px;
+    overflow-y: auto;
 }
 
 #text-container h3 {
-    color: #333; /* Dark color for heading */
-    margin-bottom: 20px; /* Space below the heading */
-    font-size: 1.75rem; /* Larger font size for better visibility */
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.75rem;
 }
 
 #text-container pre {
-    white-space: pre-wrap; /* Wrap long lines for better readability */
-    word-wrap: break-word; /* Break long words to avoid overflow */
-    font-size: 1.1rem; /* Slightly larger font size */
-    color: #212529; /* Dark color for text */
-    line-height: 1.6; /* Improved line spacing */
-}
-
-/* Responsive adjustments for smaller screens */
-@media (max-width: 768px) {
-    #context-menu {
-        width: calc(100% - 20px);
-        /* Adjust width for smaller screens */
-        bottom: 10px;
-        /* Adjust distance from bottom */
-        left: 10px;
-        /* Adjust distance from left */
-        right: 10px;
-        /* Adjust distance from right */
-        padding: 15px;
-    }
-
-    #context-menu #custom-question {
-        height: 150px;
-        /* Adjust height for smaller screens */
-    }
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #ffffff;
+    padding: 15px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
 }

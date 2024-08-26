@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Write Notes
+{% endblock %}
+
+{% block main %}
+<div id="note-taking-area" class="border border-primary rounded p-4 mb-4">
+    <h2>Write Your Notes</h2>
+    <form id="note-form" action="/write_notes" method="post">
+        <div class="mb-3">
+            <label for="tags" class="form-label">Tags (required):</label>
+            <input type="text" id="tags" name="tags" class="form-control" placeholder="Enter tags here" required>
+        </div>
+        <div class="mb-3">
+            <label for="note-textarea" class="form-label">Note Content:</label>
+            <textarea id="note-textarea" name="content" class="form-control" rows="10" placeholder="Start writing your notes here..." required></textarea>
+        </div>
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary me-2">Save Note</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
