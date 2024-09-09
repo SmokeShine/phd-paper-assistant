@@ -1,15 +1,28 @@
 import os
 import fitz
 from langchain_community.document_loaders import PyMuPDFLoader
-import requests
-from flask import Flask, flash, redirect, render_template, request, session, jsonify,send_from_directory
+from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain.chains import RetrievalQA
+from langchain_community.llms import OpenAI
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    jsonify,
+    send_from_directory,
+)
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from cs50 import SQL
-from helpers import apology, login_required, lookup_titles, extract_text_from_pdf
+from helpers import apology, login_required, lookup_titles, extract_text_from_pdf,remove_section_from_text,remove_references_from_text
 import ollama
+from langchain_community.llms import Ollama
 import uuid
-import markdown 
+import markdown
 
 # Configure application
 app = Flask(__name__)
@@ -17,16 +30,53 @@ app = Flask(__name__)
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
-UPLOAD_FOLDER = 'upload_files'  # Directory to save files
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+UPLOAD_FOLDER = "upload_files"  # Directory to save files
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+vector_store = None
+
+
+def initialize_vector_store(pdf_filename):
+    global vector_store
+
+    file_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
+
+    # Check if the file exists
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"The file {file_path} does not exist.")
+
+    # Extract text from the uploaded PDF
+    loader = PyMuPDFLoader(file_path)
+    data = loader.load()
+    text = ""
+
+    # Extract content from the first four pages
+    for i, page in enumerate(data):
+        text += page.page_content
+
+    # Remove the "Literature Review" section
+    cleaned_text = remove_section_from_text(text, "Literature Review")
+    
+    # Remove the references and in-text citations
+    cleaned_text = remove_references_from_text(cleaned_text)
+
+    if not text:
+        raise ValueError("No text extracted from the PDF.")
+
+    # Initialize the embedding model
+    embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    
+    # Create FAISS vector store
+    vector_store = FAISS.from_texts([text], embedding_model)
+
 
 Session(app)
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
 
-TAGS_FOLDER = 'tags'
+TAGS_FOLDER = "tags"
 os.makedirs(TAGS_FOLDER, exist_ok=True)
+
 
 @app.after_request
 def after_request(response):
@@ -51,28 +101,30 @@ def index():
 @login_required
 def history():
     """Show history of md saved"""
-    TAGS_FOLDER = 'tags'
+    TAGS_FOLDER = "tags"
     saved_data = []
 
     if os.path.exists(TAGS_FOLDER):
         for filename in os.listdir(TAGS_FOLDER):
-            if filename.endswith('.md'):
+            if filename.endswith(".md"):
                 file_path = os.path.join(TAGS_FOLDER, filename)
-                with open(file_path, 'r') as file:
+                with open(file_path, "r") as file:
                     # Extract the tags from the markdown file (assuming the first line is the tags)
                     first_line = file.readline().strip()
-                    if first_line.startswith('Tags:'):
-                        tags = first_line.replace('Tags:', '').strip()
+                    if first_line.startswith("Tags:"):
+                        tags = first_line.replace("Tags:", "").strip()
                     else:
-                        tags = 'No tags'
-                    
+                        tags = "No tags"
+
                     # Read the rest of the file content
                     content = file.read()
 
                 # Convert Markdown to HTML
                 html_content = markdown.markdown(content)
-                
-                saved_data.append({'name': filename, 'tags': tags, 'content': html_content})
+
+                saved_data.append(
+                    {"name": filename, "tags": tags, "content": html_content}
+                )
 
     return render_template("history.html", saved_data=saved_data), 200
 
@@ -81,28 +133,35 @@ def history():
 @login_required
 def search():
     """Search markdown files by tags"""
-    TAGS_FOLDER = 'tags'
+    TAGS_FOLDER = "tags"
     filtered_data = []
-    
-    if request.method == 'POST':
-        search_query = request.form.get('search_query', '').strip().lower()
-        
+
+    if request.method == "POST":
+        search_query = request.form.get("search_query", "").strip().lower()
+
         if search_query:
             if os.path.exists(TAGS_FOLDER):
                 for filename in os.listdir(TAGS_FOLDER):
-                    if filename.endswith('.md'):
+                    if filename.endswith(".md"):
                         file_path = os.path.join(TAGS_FOLDER, filename)
-                        with open(file_path, 'r') as file:
+                        with open(file_path, "r") as file:
                             first_line = file.readline().strip()
-                            if first_line.startswith('Tags:'):
-                                tags = first_line.replace('Tags:', '').strip().lower()
+                            if first_line.startswith("Tags:"):
+                                tags = first_line.replace("Tags:", "").strip().lower()
                                 if search_query in tags:
                                     content = file.read()
                                     # Convert Markdown to HTML
                                     html_content = markdown.markdown(content)
-                                    filtered_data.append({'name': filename, 'tags': tags, 'content': html_content})
+                                    filtered_data.append(
+                                        {
+                                            "name": filename,
+                                            "tags": tags,
+                                            "content": html_content,
+                                        }
+                                    )
 
     return render_template("search.html", filtered_data=filtered_data), 200
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -123,9 +182,10 @@ def login():
 
         # Query database for username
         rows = db.execute(
-            "SELECT * FROM users WHERE username = ?", request.form.get("username").lower()
+            "SELECT * FROM users WHERE username = ?",
+            request.form.get("username").lower(),
         )
-    
+
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(
             rows[0]["hash"], request.form.get("password")
@@ -182,7 +242,10 @@ def register():
     elif request.method == "GET":
         return render_template("register.html")
 
+
 conversation_history = []
+
+
 @app.route("/eli5", methods=["POST"])
 def eli5():
     global conversation_history
@@ -190,41 +253,39 @@ def eli5():
     data = request.json
     selected_text = data.get("text", "")
     system_message = "Use a formal tone and do not introduce yourself. You are a PhD Student in Deep Learning. Your explanations can contain technical jargon to make the concepts clear."
-    
+
     if selected_text:
         # Initialize conversation history if it's the start of a new session
         if not conversation_history:
             conversation_history.append({"role": "system", "content": system_message})
-        
+
         # Add the user's message to the history
         conversation_history.append({"role": "user", "content": selected_text})
 
         try:
             # Get the response from the model
-            response = ollama.chat(
-                model="llama3.1",
-                messages=conversation_history
-            )
-            
+            response = ollama.chat(model="llama3.1", messages=conversation_history)
+
             # Extract the response content
-            explanation = response.get('message', {}).get('content', '').strip()
-            
+            explanation = response.get("message", {}).get("content", "").strip()
+
             # Add the assistant's response to the conversation history
             conversation_history.append({"role": "assistant", "content": explanation})
-            
+
             return jsonify({"explanation": explanation})
-        
+
         except Exception as e:
             # Handle any errors from the model or request
             return jsonify({"error": str(e)}), 500
 
     return jsonify({"explanation": "No text provided"}), 400
 
-@app.route('/save_markdown', methods=['POST'])
+
+@app.route("/save_markdown", methods=["POST"])
 def save_markdown():
     data = request.json
-    content = data.get('content')
-    tags = data.get('tags', '')  # Default to empty string if no tags are provided
+    content = data.get("content")
+    tags = data.get("tags", "")  # Default to empty string if no tags are provided
 
     if content:
         # Generate a unique filename with a UUID
@@ -236,40 +297,50 @@ def save_markdown():
             os.makedirs(TAGS_FOLDER, exist_ok=True)
 
             # Save the content as a markdown file
-            with open(filepath, 'w') as file:
+            with open(filepath, "w") as file:
                 # if tags:
                 #     file.write(f"Tags: {tags}\n\n")
                 file.write(content)
 
-            return jsonify({"status": "success", "message": f"File saved as {filename}"}), 200
-        
+            return (
+                jsonify({"status": "success", "message": f"File saved as {filename}"}),
+                200,
+            )
+
         except Exception as e:
             # Handle any errors that occur during file writing
-            return jsonify({"status": "error", "message": f"An error occurred: {str(e)}"}), 500
-    
+            return (
+                jsonify({"status": "error", "message": f"An error occurred: {str(e)}"}),
+                500,
+            )
+
     else:
         return jsonify({"status": "error", "message": "No content provided"}), 400
 
-@app.route('/filter_by_tag', methods=['GET'])
+
+@app.route("/filter_by_tag", methods=["GET"])
 def filter_by_tag():
-    query_tag = request.args.get('tag')
+    query_tag = request.args.get("tag")
     matching_files = []
 
     for filename in os.listdir(TAGS_FOLDER):
         filepath = os.path.join(TAGS_FOLDER, filename)
-        with open(filepath, 'r') as file:
+        with open(filepath, "r") as file:
             content = file.read()
             if f"Tags: {query_tag}" in content:
                 matching_files.append(filename)
 
     return jsonify({"files": matching_files}), 200
 
+
 @app.route("/write_notes", methods=["GET", "POST"])
 @login_required
 def write_notes():
     if request.method == "POST":
-        content = request.form.get('content')
-        tags = request.form.get('tags', '')  # Default to empty string if no tags are provided
+        content = request.form.get("content")
+        tags = request.form.get(
+            "tags", ""
+        )  # Default to empty string if no tags are provided
 
         if content:
             # Generate a unique filename with a UUID
@@ -281,7 +352,7 @@ def write_notes():
                 os.makedirs(TAGS_FOLDER, exist_ok=True)
 
                 # Save the content as a markdown file
-                with open(filepath, 'w') as file:
+                with open(filepath, "w") as file:
                     if tags:
                         file.write(f"Tags: {tags}\n\n")
                     file.write(content)
@@ -293,94 +364,114 @@ def write_notes():
                 # Handle any errors that occur during file writing
                 flash(f"An error occurred: {str(e)}", "danger")
                 return redirect("/write_notes")
-        
+
         else:
             flash("No content provided", "warning")
             return redirect("/write_notes")
-    
+
     elif request.method == "GET":
         return render_template("write_notes.html", text=None)
+
 
 @app.route("/upload_pdf", methods=["GET", "POST"])
 @login_required
 def upload_pdf():
     if request.method == "POST":
-        if 'pdfFile' not in request.files:
-            return jsonify({'success': False, 'message': 'No file part'}), 400
+        if "pdfFile" not in request.files:
+            return jsonify({"success": False, "message": "No file part"}), 400
 
-        file = request.files['pdfFile']
-        
-        if file.filename == '':
-            return jsonify({'success': False, 'message': 'No selected file'}), 400
+        file = request.files["pdfFile"]
 
-        if file and file.filename.endswith('.pdf'):
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        if file.filename == "":
+            return jsonify({"success": False, "message": "No selected file"}), 400
+
+        if file and file.filename.endswith(".pdf"):
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
             file.save(file_path)  # Save the file to the server
 
             # Extract text from the PDF
             text = extract_text_from_pdf(file_path)
-            
-            # Return the file's URL for rendering
-            return jsonify({
-            'success': True,
-            'message': 'Upload successful!',
-            'file_url': f'/uploads/{file.filename}',
-            'extracted_text': text
-        })
+
+            # Initialize vector store with the new PDF
+            try:
+                initialize_vector_store(file.filename)
+                return jsonify(
+                    {
+                        "success": True,
+                        "message": "Upload successful!",
+                        "file_url": f"/uploads/{file.filename}",
+                        "extracted_text": text,
+                    }
+                )
+            except Exception as e:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "message": f"Error initializing vector store: {str(e)}",
+                        }
+                    ),
+                    500,
+                )
         else:
-            return jsonify({'success': False, 'message': 'Invalid file type'}), 400
+            return jsonify({"success": False, "message": "Invalid file type"}), 400
     elif request.method == "GET":
         return render_template("upload.html", text=None)
-    
-@app.route('/uploads/<filename>')
+
+
+@app.route("/uploads/<filename>")
 @login_required
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
-@app.route('/edit_note/<filename>', methods=['GET', 'POST'])
+
+@app.route("/edit_note/<filename>", methods=["GET", "POST"])
 @login_required
 def edit_note(filename):
     file_path = os.path.join(TAGS_FOLDER, filename)
-    
-    if request.method == 'POST':
-        content = request.form.get('content')
-        tags = request.form.get('tags', '')
+
+    if request.method == "POST":
+        content = request.form.get("content")
+        tags = request.form.get("tags", "")
 
         if content:
             try:
-                with open(file_path, 'w') as file:
+                with open(file_path, "w") as file:
                     if tags:
                         file.write(f"Tags: {tags}\n\n")
                     file.write(content)
-                flash('Note updated successfully!', 'success')
-                return redirect('/history')
+                flash("Note updated successfully!", "success")
+                return redirect("/history")
             except Exception as e:
-                flash(f'Error updating note: {str(e)}', 'danger')
-                return redirect(f'/edit_note/{filename}')
+                flash(f"Error updating note: {str(e)}", "danger")
+                return redirect(f"/edit_note/{filename}")
         else:
-            flash('No content provided', 'warning')
-            return redirect(f'/edit_note/{filename}')
-    
-    elif request.method == 'GET':
+            flash("No content provided", "warning")
+            return redirect(f"/edit_note/{filename}")
+
+    elif request.method == "GET":
         if os.path.exists(file_path):
-            with open(file_path, 'r') as file:
+            with open(file_path, "r") as file:
                 lines = file.readlines()
                 # Extract tags from the first line
                 tags_line = lines[0].strip()
-                if tags_line.startswith('Tags:'):
-                    tags = tags_line.replace('Tags:', '').strip()
+                if tags_line.startswith("Tags:"):
+                    tags = tags_line.replace("Tags:", "").strip()
                 else:
-                    tags = ''
+                    tags = ""
 
                 # Extract content (excluding tags line)
-                content = ''.join(lines[1:])  # Join remaining lines as content
-            
-            return render_template('edit_note.html', filename=filename, content=content, tags=tags)
+                content = "".join(lines[1:])  # Join remaining lines as content
+
+            return render_template(
+                "edit_note.html", filename=filename, content=content, tags=tags
+            )
         else:
-            flash('File not found', 'danger')
-            return redirect('/history')
-        
-@app.route('/delete_note/<filename>', methods=['POST'])
+            flash("File not found", "danger")
+            return redirect("/history")
+
+
+@app.route("/delete_note/<filename>", methods=["POST"])
 @login_required
 def delete_note(filename):
     file_path = os.path.join(TAGS_FOLDER, filename)
@@ -388,10 +479,34 @@ def delete_note(filename):
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
-            flash('Note deleted successfully!', 'success')
+            flash("Note deleted successfully!", "success")
         else:
-            flash('File not found', 'danger')
+            flash("File not found", "danger")
     except Exception as e:
-        flash(f'Error deleting note: {str(e)}', 'danger')
+        flash(f"Error deleting note: {str(e)}", "danger")
 
-    return redirect('/history')
+    return redirect("/history")
+
+
+@app.route("/rag_query", methods=["POST"])
+@login_required
+def rag():
+    query = request.json.get("query")
+    if not query:
+        return jsonify({"error": "Query parameter is required"}), 400
+
+    if vector_store is None:
+        return jsonify({"error": "Vector store is not initialized"}), 500
+
+    # Create a RetrievalQA chain
+    retriever = vector_store.as_retriever()
+    llm = Ollama(base_url="http://localhost:11434", model="llama3.1")
+    rag_chain = RetrievalQA.from_chain_type(llm,retriever=retriever)
+
+    # Get the answer from the RAG model
+    try:
+        answer = rag_chain.invoke({"query": query})
+        
+        return jsonify({"answer": answer["result"]}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

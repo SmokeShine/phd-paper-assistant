@@ -1,7 +1,10 @@
 import csv
 import datetime
+import numpy as np
 import pytz
 import requests
+from sentence_transformers import SentenceTransformer
+import faiss
 import urllib
 import re
 import uuid
@@ -92,8 +95,8 @@ def lookup_titles():
     except (KeyError, IndexError, requests.RequestException, ValueError):
         return None
 
+# Function to remove references and citations
 def remove_references_from_text(text):
-    # Step 1: Remove the references section
     references_patterns = ["references", "bibliography", "works cited"]
     lower_text = text.lower()
     for pattern in references_patterns:
@@ -102,62 +105,139 @@ def remove_references_from_text(text):
             text = text[:ref_index].strip()
             break
     
-    # Step 2: Remove in-text citations (simple patterns like [1], (Smith et al., 2020))
-    # Pattern for [1], [12], etc.
-    text = re.sub(r'\[\d+\]', '', text)
-    
-    # Pattern for (Smith et al., 2020) or similar
-    text = re.sub(r'\(\w+ et al\., \d{4}\)', '', text)
+    text = re.sub(r'\[\d+\]', '', text)  # e.g., [1], [12], etc.
+    text = re.sub(r'\(\w+ et al\., \d{4}\)', '', text)  # e.g., (Smith et al., 2020)
     
     return text
 
+# Function to remove specific sections like "Literature Review"
 def remove_section_from_text(text, section_heading):
     lower_text = text.lower()
-    
-    # Find the start of the section
     start_index = lower_text.find(section_heading.lower())
     
     if start_index == -1:
-        return text  # Section not found
+        return text
     
-    # Find the end of the section (optional)
     next_section_pattern = r'\n\s*(introduction|methods|results|discussion|conclusion|references)\b'
     match = re.search(next_section_pattern, lower_text[start_index:])
     
     if match:
         end_index = start_index + match.start()
     else:
-        end_index = len(text)  # No further sections found; remove till the end
+        end_index = len(text)
     
-    # Remove the section
     return text[:start_index].strip() + "\n" + text[end_index:].strip()
+
+# Function to chunk text based on sections
+def chunk_text_by_sections(text, chunk_size=500):
+    words = text.split()
+    chunks = []
+    for i in range(0, len(words), chunk_size):
+        chunks.append(" ".join(words[i:i + chunk_size]))
+    return chunks
+
+# Extract and preprocess text from PDF
+def extract_and_preprocess_text(pdf_path):
+    loader = PyMuPDFLoader(pdf_path)
+    data = loader.load()
+    full_text = ""
+
+    # Combine content from all pages
+    for page in data:
+        full_text += page.page_content
+    
+    # Remove unwanted sections and references
+    text_without_lit_review = remove_section_from_text(full_text, "Literature Review")
+    cleaned_text = remove_references_from_text(text_without_lit_review)
+    
+    # Chunk text by sections or by fixed size
+    chunks = chunk_text_by_sections(cleaned_text)
+    return chunks
+
+# Create embeddings for text chunks
+def create_embeddings(chunks, model_name='sentence-transformers/all-MiniLM-L6-v2'):
+    model = SentenceTransformer(model_name)
+    embeddings = model.encode(chunks, convert_to_tensor=True)
+    return embeddings, model
+
+# Build a FAISS index
+def build_faiss_index(embeddings):
+    embedding_matrix = np.array(embeddings)
+    index = faiss.IndexFlatL2(embedding_matrix.shape[1])
+    index.add(embedding_matrix)
+    return index
+
+# Retrieve relevant chunks using FAISS
+def retrieve_relevant_chunks(query, index, embedding_model, chunks, top_k=5):
+    query_embedding = embedding_model.encode([query], convert_to_tensor=True)
+    distances, indices = index.search(np.array([query_embedding]), top_k)
+    results = [chunks[idx] for idx in indices[0]]
+    return results
+
+# Generate a response using Ollama with the relevant chunks
+def generate_response_with_ollama(relevant_chunks, query):
+    conversation_history = [
+        {"role": "system", "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper."},
+        {"role": "user", "content": " ".join(relevant_chunks)}
+    ]
+    
+    response = ollama.chat(
+        model="llama3.1",
+        messages=conversation_history,
+        options=ollama.Options(context_length=8096)
+    )
+    
+    summary = response.get('message', {}).get('content', '').strip()
+    return summary
+
+# Main function to process the PDF and generate a summary or answer
+def process_ml_paper(pdf_path, query):
+    # Step 1: Extract and preprocess text
+    chunks = extract_and_preprocess_text(pdf_path)
+    
+    # Step 2: Create embeddings
+    embeddings, embedding_model = create_embeddings(chunks)
+    
+    # Step 3: Build FAISS index
+    index = build_faiss_index(embeddings)
+    
+    # Step 4: Retrieve relevant chunks based on the query
+    relevant_chunks = retrieve_relevant_chunks(query, index, embedding_model, chunks)
+    
+    # Step 5: Generate a response using Ollama
+    summary = generate_response_with_ollama(relevant_chunks, query)
+    
+    return summary
 
 def extract_text_from_pdf(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
     data = loader.load()
     text = ""
-    conversation_history = []
-    system_message = "Use a formal tone and do not introduce yourself. Don't ask any question at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper."
-    conversation_history.append({"role": "system", "content": system_message})
-    i=0
-    for page in data:
+
+    # Extract content from the first four pages
+    for i, page in enumerate(data[:4]):
         text += page.page_content
-        i+=1
-        if i == 4:
-            break
+
     # Remove the "Literature Review" section
     cleaned_text = remove_section_from_text(text, "Literature Review")
     
-    # Optionally, remove the references and in-text citations as well
+    # Remove the references and in-text citations
     cleaned_text = remove_references_from_text(cleaned_text)
-    conversation_history.append({"role": "user", "content": cleaned_text})
+
+    # Prepare conversation history for Ollama
+    conversation_history = [
+        {"role": "system", "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper."},
+        {"role": "user", "content": cleaned_text}
+    ]
+    
+    # Generate a response using Ollama
     response = ollama.chat(
-                model="llama3.1",
-                messages=conversation_history,
-                options = ollama.Options(context_length=8096)
-            )
-            
-    # Extract the response content
+        model="llama3.1",
+        messages=conversation_history,
+        options=ollama.Options(context_length=8096)
+    )
+    
+    # Extract and return the response content
     summary = response.get('message', {}).get('content', '').strip()
-            
     return summary
+

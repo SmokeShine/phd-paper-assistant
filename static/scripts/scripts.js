@@ -224,4 +224,38 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Error:', error);
         });
     }
+
+    // Form submission for RAG query
+    document.getElementById('rag-form').addEventListener('submit', function(event) {
+        event.preventDefault();  // Prevent the default form submission behavior
+        const query = document.getElementById('rag-query-input').value;
+
+        // Handle the RAG query here (e.g., send it to the server via an API call)
+        console.log("Query submitted: " + query);
+
+        // Optionally update the UI with a response
+        document.getElementById('rag-response').textContent = 'Processing query: ' + query;
+
+        // Example of a fetch call for server-side processing
+        fetch('/rag_query', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query: query })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Response data:', data); // Log the whole response
+            const textContainer = document.getElementById('text-container');
+            const textElement = document.createElement('pre');
+            textElement.textContent = data.answer || 'No text extracted from the PDF.';
+            textContainer.innerHTML = '';  // Clear previous content
+            textContainer.appendChild(textElement);
+            document.getElementById('rag-response').textContent = 'Processed query: ' + query;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
 });

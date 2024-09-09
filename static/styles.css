@@ -1,6 +1,9 @@
 /* General Styles */
 body {
     font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    color: #333;
 }
 
 /* Context Menu Styling */
@@ -61,6 +64,16 @@ body {
 #context-menu .ollama-actions .btn {
     font-size: 1rem;
     padding: 8px 16px;
+    background-color: #007bff;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#context-menu .ollama-actions .btn:hover {
+    background-color: #0056b3;
 }
 
 /* Upload Area Styles */
@@ -128,4 +141,45 @@ body {
     padding: 15px;
     border: 1px solid #ced4da;
     border-radius: 4px;
+}
+
+/* Form Styles */
+form {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+form .form-group {
+    margin-bottom: 1rem;
+}
+
+form .form-control {
+    font-size: 1rem;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+
+form .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, 0.25);
+}
+
+form .btn-primary {
+    background-color: #007bff;
+    border: none;
+    color: #ffffff;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+form .btn-primary:hover {
+    background-color: #0056b3;
 }
