@@ -1,9 +1,10 @@
 /* General Styles */
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', sans-serif; /* Modern font */
     margin: 0;
     padding: 0;
-    color: #333;
+    color: #212529; /* Neutral text color */
+    background-color: #f0f2f5; /* Light background */
 }
 
 /* Context Menu Styling */
@@ -11,24 +12,23 @@ body {
     display: none;
     position: fixed;
     bottom: 20px;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
     background-color: #ffffff;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
     padding: 20px;
     width: calc(100% - 40px);
     max-width: 800px;
-    margin: 0 auto;
     z-index: 1050;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
 #context-menu.show {
     display: block;
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
 }
 
 #context-menu #custom-question {
@@ -36,11 +36,14 @@ body {
     font-size: 1rem;
     resize: vertical;
     margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
 }
 
 #context-menu #loading-message {
     font-size: 1rem;
-    color: #6c757d;
+    color: #adb5bd;
 }
 
 #context-menu #askollama-history {
@@ -49,9 +52,10 @@ body {
     padding: 15px;
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 1rem;
     margin-bottom: 20px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 #context-menu .ollama-actions {
@@ -63,24 +67,25 @@ body {
 
 #context-menu .ollama-actions .btn {
     font-size: 1rem;
-    padding: 8px 16px;
-    background-color: #007bff;
+    padding: 10px 20px;
+    background-color: #0d6efd;
     color: #ffffff;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 #context-menu .ollama-actions .btn:hover {
-    background-color: #0056b3;
+    background-color: #0a58ca;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Upload Area Styles */
 .upload-area {
-    border: 2px dashed #6c757d;
-    border-radius: 8px;
-    padding: 20px;
+    border: 2px dashed #adb5bd;
+    border-radius: 12px;
+    padding: 30px;
     text-align: center;
     cursor: pointer;
     background-color: #ffffff;
@@ -88,7 +93,7 @@ body {
 }
 
 .upload-area:hover {
-    background-color: #f1f3f5;
+    background-color: #e9ecef;
 }
 
 .upload-area p {
@@ -98,14 +103,14 @@ body {
 }
 
 .upload-area.drag-over {
-    border-color: #007bff;
-    background-color: #e9ecef;
+    border-color: #0d6efd;
+    background-color: #e0f0ff;
 }
 
 #upload-status {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #333;
+    color: #212529;
     margin-top: 1rem;
 }
 
@@ -115,32 +120,34 @@ body {
 
 /* Text Container Styles */
 #text-container {
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     border: 1px solid #dee2e6;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 30px;
     margin-top: 20px;
     max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     height: 600px;
     overflow-y: auto;
 }
 
 #text-container h3 {
-    color: #333;
+    color: #212529;
     margin-bottom: 20px;
     font-size: 1.75rem;
+    font-weight: 600;
 }
 
 #text-container pre {
     white-space: pre-wrap;
     word-wrap: break-word;
-    background-color: #ffffff;
+    background-color: #f8f9fa;
     padding: 15px;
     border: 1px solid #ced4da;
-    border-radius: 4px;
+    border-radius: 8px;
+    color: #495057;
 }
 
 /* Form Styles */
@@ -148,9 +155,10 @@ form {
     max-width: 600px;
     margin: 0 auto;
     padding: 20px;
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     border: 1px solid #dee2e6;
-    border-radius: 8px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 form .form-group {
@@ -160,26 +168,66 @@ form .form-group {
 form .form-control {
     font-size: 1rem;
     padding: 10px;
-    border-radius: 4px;
+    border-radius: 6px;
     border: 1px solid #ced4da;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 form .form-control:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, 0.25);
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
 form .btn-primary {
-    background-color: #007bff;
+    background-color: #0d6efd;
     border: none;
     color: #ffffff;
-    padding: 10px 20px;
+    padding: 12px 24px;
     font-size: 1rem;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 form .btn-primary:hover {
-    background-color: #0056b3;
+    background-color: #0a58ca;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Styling in List */
+.btn-outline-primary, .btn-outline-danger {
+    border-radius: 6px; /* Consistent rounded corners */
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.btn-outline-primary {
+    color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-outline-primary:hover {
+    color: #ffffff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-outline-danger {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+    color: #ffffff;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Utility Classes */
+.d-flex {
+    display: flex;
+    align-items: center;
+}
+
+.me-2 {
+    margin-right: 0.5rem;
 }

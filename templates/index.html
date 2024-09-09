@@ -1,11 +1,43 @@
 {% extends "layout.html" %}
-<!-- this will replace the title and main in the layout.html dynamically -->
 {% block title %}
 Hugging Face Daily Papers
 {% endblock %}
 
 {% block main %}
+<div class="container py-5">
+    <!-- <h1 class="display-5 text-center mb-4">Top Hugging Face Daily Papers</h1> -->
 
-{{ papers_data | safe }}
-
+    <div class="row">
+        {% if papers_data %}
+            {% for paper in papers_data %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ paper.Title }}</h5>
+                            <p class="card-text text-muted">
+                                Submitted by: {{ paper.Submitted }}
+                            </p>
+                            <p class="card-text">
+                                {{ paper.Summary|safe }}
+                            </p>
+                            <!-- Google search link for the paper title -->
+                            <a href="https://www.google.com/search?q={{ paper.Title | urlencode }}" 
+                               class="btn btn-outline-primary" target="_blank">
+                               Read Full Paper
+                            </a>
+                        </div>
+                        <div class="card-footer text-muted d-flex justify-content-between">
+                            <span>Published: {{ paper.Published }}</span>
+                            <span>Upvotes: {{ paper.Upvotes }}</span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info text-center">
+                No papers found for today.
+            </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

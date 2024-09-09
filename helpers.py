@@ -77,7 +77,6 @@ def lookup_titles():
             headers={"Accept": "*/*", "User-Agent": request.headers.get("User-Agent")},
         )
         response.raise_for_status()
-
         quotes = json.loads(response.content.decode('utf-8'))
         flatten_data = json_normalize(quotes)
         
@@ -86,12 +85,13 @@ def lookup_titles():
         submittedBy = flatten_data['submittedBy.fullname']
         summary = flatten_data['paper.summary']
         upvotes = flatten_data['paper.upvotes']
-    
-        papers_data=pd.concat([title,published_at,submittedBy,summary,upvotes],axis=1)
-        papers_data.columns = ['Title','Published','Submitted','Summary','Upvotes']
+        
+        papers_data = pd.concat([title, published_at, submittedBy, summary, upvotes], axis=1)
+        papers_data.columns = ['Title', 'Published', 'Submitted', 'Summary', 'Upvotes']
         papers_data['Summary'] = papers_data['Summary'].str.replace('\n', '<br>')
-        papers_data.sort_values(by="Upvotes",ascending=False,inplace=True)
-        return papers_data.to_html(classes='table table-striped', index=False,escape=False)
+        papers_data.sort_values(by="Upvotes", ascending=False, inplace=True)
+
+        return papers_data.to_dict(orient='records') 
     except (KeyError, IndexError, requests.RequestException, ValueError):
         return None
 

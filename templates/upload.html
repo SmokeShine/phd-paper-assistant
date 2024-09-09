@@ -1,37 +1,50 @@
 {% extends "layout.html" %}
 
 {% block title %}
-Upload Pdf
+Upload PDF
 {% endblock %}
 
 {% block main %}
-<div class="container my-4">
-    <div class="tab-content" id="myTabContent">
-        <div class="tab-pane fade show active" id="upload" role="tabpanel">
-            <div id="drag-drop-area" class="upload-area mt-3">
-                <p>Drag & Drop your PDF here or click to upload</p>
-                <input type="file" id="pdfFileInput" class="d-none" accept="application/pdf">
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- PDF Upload Area -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center p-4">
+                    <div id="drag-drop-area" class="upload-area">
+                        <p class="text-muted mb-0">Drag & Drop your PDF here or <span class="text-primary">click to upload</span></p>
+                        <input type="file" id="pdfFileInput" class="d-none" accept="application/pdf">
+                    </div>
+                    <div id="upload-status" class="text-center mt-4 text-muted"></div>
+                </div>
             </div>
-            <div id="upload-status" class="text-center mt-3"></div>
+
+            <!-- Dynamic PDF Container -->
+            <div id="pdf-container" class="mt-4"></div>
+
+            <!-- Text Container -->
+            <div id="text-container" class="mt-4 bg-white shadow-sm rounded p-4"></div>
         </div>
     </div>
 </div>
 
-<div id="pdf-container"></div>
-<div id="text-container">
-    <!-- Text will be dynamically inserted here -->
-</div>
-
-<!-- Form for RAG queries -->
-<div class="container my-4">
-    <form id="rag-form">
-        <div class="form-group">
-            <label for="rag-query">RAG:</label>
-            <input type="text" id="rag-query-input" class="form-control" placeholder="Query" required>
+<!-- RAG Query Form -->
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <form id="rag-form">
+                        <div class="form-group">
+                            <label for="rag-query-input" class="form-label">RAG Query:</label>
+                            <input type="text" id="rag-query-input" class="form-control" placeholder="Enter your query" required>
+                        </div>
+                    </form>
+                    <div id="rag-response" class="mt-4"></div>
+                </div>
+            </div>
         </div>
-        <!-- <button type="submit" class="btn btn-primary mt-2">Submit</button> -->
-    </form>
-    <div id="rag-response" class="mt-3"></div>
+    </div>
 </div>
 
 {% endblock %}
