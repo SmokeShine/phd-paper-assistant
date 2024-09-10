@@ -5,30 +5,37 @@ Hugging Face Daily Papers
 
 {% block main %}
 <div class="container py-5">
-    <!-- <h1 class="display-5 text-center mb-4">Top Hugging Face Daily Papers</h1> -->
-
     <div class="row">
         {% if papers_data %}
             {% for paper in papers_data %}
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-body">
-                            <h5 class="card-title">{{ paper.Title }}</h5>
+                            <h5 class="card-title">{{ paper.title }}</h5>
                             <p class="card-text text-muted">
-                                Submitted by: {{ paper.Submitted }}
+                                Submitted by: {{ paper.submitted_by }}
                             </p>
                             <p class="card-text">
-                                {{ paper.Summary|safe }}
+                                {{ paper.summary|safe }}
                             </p>
                             <!-- Google search link for the paper title -->
-                            <a href="https://www.google.com/search?q={{ paper.Title | urlencode }}" 
+                            <a href="https://www.google.com/search?q={{ paper.title | urlencode }}" 
                                class="btn btn-outline-primary" target="_blank">
                                Read Full Paper
                             </a>
                         </div>
-                        <div class="card-footer text-muted d-flex justify-content-between">
-                            <span>Published: {{ paper.Published }}</span>
-                            <span>Upvotes: {{ paper.Upvotes }}</span>
+                        <div class="card-footer text-muted d-flex justify-content-between align-items-center">
+                            <span>Published: {{ paper.published }}</span>
+                            <span>Upvotes: {{ paper.upvotes }}</span>
+                            
+                            <!-- Pin/Unpin Button -->
+                            <form action="{% if paper.pinned %}{{ url_for('unpin_paper', paper_id=paper.title) }}{% else %}{{ url_for('pin_paper', paper_id=paper.title) }}{% endif %}" method="POST">
+                                {% if paper.pinned %}
+                                    <button type="submit" class="btn btn-warning btn-sm">Unpin</button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-success btn-sm">Pin</button>
+                                {% endif %}
+                            </form>
                         </div>
                     </div>
                 </div>

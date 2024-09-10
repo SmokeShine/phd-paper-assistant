@@ -14,11 +14,20 @@ from flask import (
     session,
     jsonify,
     send_from_directory,
+    url_for,
 )
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
-from cs50 import SQL
-from helpers import apology, login_required, lookup_titles, extract_text_from_pdf,remove_section_from_text,remove_references_from_text
+from helpers import (
+    apology,
+    login_required,
+    lookup_titles,
+    extract_text_from_pdf,
+    remove_section_from_text,
+    remove_references_from_text,
+    db,
+    SQL,
+)
 import ollama
 from langchain_community.llms import Ollama
 import uuid
@@ -55,7 +64,7 @@ def initialize_vector_store(pdf_filename):
 
     # Remove the "Literature Review" section
     cleaned_text = remove_section_from_text(text, "Literature Review")
-    
+
     # Remove the references and in-text citations
     cleaned_text = remove_references_from_text(cleaned_text)
 
@@ -64,15 +73,13 @@ def initialize_vector_store(pdf_filename):
 
     # Initialize the embedding model
     embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-    
+
     # Create FAISS vector store
     vector_store = FAISS.from_texts([text], embedding_model)
 
 
 Session(app)
 
-# Configure CS50 Library to use SQLite database
-db = SQL("sqlite:///finance.db")
 
 TAGS_FOLDER = "tags"
 os.makedirs(TAGS_FOLDER, exist_ok=True)
@@ -501,12 +508,45 @@ def rag():
     # Create a RetrievalQA chain
     retriever = vector_store.as_retriever()
     llm = Ollama(base_url="http://localhost:11434", model="llama3.1")
-    rag_chain = RetrievalQA.from_chain_type(llm,retriever=retriever)
+    rag_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
 
     # Get the answer from the RAG model
     try:
         answer = rag_chain.invoke({"query": query})
-        
+
         return jsonify({"answer": answer["result"]}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/pin/<string:paper_id>", methods=["POST"])
+@login_required
+def pin_paper(paper_id):
+    # Check if the paper is already pinned for the user
+    pinned = db.execute("SELECT * FROM pinned_papers WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
+
+    if pinned:
+        # If the paper is already in the table, update its pinned status
+        db.execute("UPDATE pinned_papers SET pinned = 1 WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
+        flash(f'{paper_id} has been pinned.')
+    else:
+        # Insert a new record if it doesn't exist
+        db.execute("INSERT INTO pinned_papers (user_id, paper_id, pinned) VALUES (?, ?, 1)", session["user_id"], paper_id)
+        flash(f'{paper_id} has been pinned.')
+
+    return redirect(url_for("index"))
+
+@app.route("/unpin/<string:paper_id>", methods=["POST"])
+@login_required
+def unpin_paper(paper_id):
+    # Check if the paper exists in the pinned_papers table
+    paper = db.execute("SELECT paper_id FROM pinned_papers WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
+
+    if paper:
+        # Update the paper to be unpinned
+        db.execute("UPDATE pinned_papers SET pinned = 0 WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
+        flash(f'{paper_id} has been unpinned.')
+    else:
+        flash("Paper not found.")
+
+    return redirect(url_for("index"))

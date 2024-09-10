@@ -56,6 +56,12 @@ PhD Paper Assistant is a web-based tool designed to help PhD students navigate a
 
 - **Python 3.7+**
 - **Ollama Server Setup:** Ensure Llama 3.1 is hosted on an Ollama server.
+
+```bash
+sudo systemctl start ollama
+ollama run llama3.1
+```
+
 - **GTX 1080 (or equivalent) with 8 GB VRAM**
 
 ### Installation

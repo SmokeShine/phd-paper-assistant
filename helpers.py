@@ -16,6 +16,10 @@ from functools import wraps
 import fitz
 from langchain_community.document_loaders import PyMuPDFLoader
 import ollama
+from cs50 import SQL
+
+# Configure CS50 Library to use SQLite database
+db = SQL("sqlite:///finance.db")
 
 def apology(message, code=400):
     """Render message as an apology to user."""
@@ -59,17 +63,13 @@ def login_required(f):
 
 
 def lookup_titles():
-    """Look up quote for symbol."""
+    """Look up recent papers from Hugging Face and merge with pinning data from SQLite."""
 
     # Prepare API request
     end = datetime.datetime.now(pytz.timezone("US/Eastern"))
     start = (end - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
-    url = (
-        f"https://huggingface.co/api/daily_papers"
-        f"?date>{start}"
-    )
+    url = f"https://huggingface.co/api/daily_papers?date>{start}"
     
-    # Query API
     try:
         response = requests.get(
             url,
@@ -78,20 +78,33 @@ def lookup_titles():
         )
         response.raise_for_status()
         quotes = json.loads(response.content.decode('utf-8'))
-        flatten_data = json_normalize(quotes)
+        flatten_data = pd.json_normalize(quotes)
         
         title = flatten_data.title
         published_at = pd.to_datetime(flatten_data.publishedAt).dt.date
-        submittedBy = flatten_data['submittedBy.fullname']
+        submitted_by = flatten_data['submittedBy.fullname']
         summary = flatten_data['paper.summary']
         upvotes = flatten_data['paper.upvotes']
-        
-        papers_data = pd.concat([title, published_at, submittedBy, summary, upvotes], axis=1)
-        papers_data.columns = ['Title', 'Published', 'Submitted', 'Summary', 'Upvotes']
-        papers_data['Summary'] = papers_data['Summary'].str.replace('\n', '<br>')
-        papers_data.sort_values(by="Upvotes", ascending=False, inplace=True)
+        paper_ids = flatten_data['paper.id']
 
-        return papers_data.to_dict(orient='records') 
+        papers_data = pd.concat([paper_ids, title, published_at, submitted_by, summary, upvotes], axis=1)
+        papers_data.columns = ['id', 'title', 'published', 'submitted_by', 'summary', 'upvotes']
+        papers_data['summary'] = papers_data['summary'].str.replace('\n', '<br>')
+        papers_data.sort_values(by="upvotes", ascending=False, inplace=True)
+
+        # Convert to a list of dictionaries
+        papers = papers_data.to_dict(orient='records')
+        
+        # Query the database to get pinned papers
+        pinned_papers = db.execute("SELECT paper_id FROM pinned_papers WHERE pinned = 1 and user_id = ?", session["user_id"])
+        pinned_paper_ids = {p['paper_id'] for p in pinned_papers}
+
+        # Add 'pinned' status to the papers
+        for paper in papers:
+            paper['pinned'] = paper['title'] in pinned_paper_ids
+
+        return papers
+
     except (KeyError, IndexError, requests.RequestException, ValueError):
         return None
 
