@@ -68,14 +68,14 @@ def initialize_vector_store(pdf_filename):
     # Remove the references and in-text citations
     cleaned_text = remove_references_from_text(cleaned_text)
 
-    if not text:
+    if not cleaned_text:
         raise ValueError("No text extracted from the PDF.")
 
     # Initialize the embedding model
     embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
     # Create FAISS vector store
-    vector_store = FAISS.from_texts([text], embedding_model)
+    vector_store = FAISS.from_texts([cleaned_text], embedding_model)
 
 
 Session(app)
@@ -519,33 +519,64 @@ def rag():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/pin/<string:paper_id>", methods=["POST"])
+@app.route("/pin", methods=["POST"])
 @login_required
-def pin_paper(paper_id):
+def pin_paper():
+    paper_id = request.form.get("paper_id")
+    published = request.form.get("published")
+    submitted_by = request.form.get("submitted_by")
+    summary = request.form.get("summary")
+    upvotes = request.form.get("upvotes")
+
     # Check if the paper is already pinned for the user
-    pinned = db.execute("SELECT * FROM pinned_papers WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
+    pinned = db.execute(
+        "SELECT * FROM pinned_papers WHERE paper_id = ? AND user_id = ?",
+        paper_id,
+        session["user_id"],
+    )
 
     if pinned:
         # If the paper is already in the table, update its pinned status
-        db.execute("UPDATE pinned_papers SET pinned = 1 WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
-        flash(f'{paper_id} has been pinned.')
+        db.execute(
+            "UPDATE pinned_papers SET pinned = 1 WHERE paper_id = ? AND user_id = ?",
+            paper_id,
+            session["user_id"],
+        )
+        flash(f"{paper_id} has been pinned.")
     else:
         # Insert a new record if it doesn't exist
-        db.execute("INSERT INTO pinned_papers (user_id, paper_id, pinned) VALUES (?, ?, 1)", session["user_id"], paper_id)
-        flash(f'{paper_id} has been pinned.')
+        db.execute(
+            "INSERT INTO pinned_papers (user_id, paper_id, published, submitted_by, summary, upvotes, pinned) VALUES (?, ?, ?, ?, ?, ?, 1)",
+            session["user_id"],
+            paper_id,
+            published,
+            submitted_by,
+            summary,
+            upvotes,
+        )
+        flash(f"{paper_id} has been pinned.")
 
     return redirect(url_for("index"))
+
 
 @app.route("/unpin/<string:paper_id>", methods=["POST"])
 @login_required
 def unpin_paper(paper_id):
     # Check if the paper exists in the pinned_papers table
-    paper = db.execute("SELECT paper_id FROM pinned_papers WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
+    paper = db.execute(
+        "SELECT paper_id FROM pinned_papers WHERE paper_id = ? AND user_id = ?",
+        paper_id,
+        session["user_id"],
+    )
 
     if paper:
         # Update the paper to be unpinned
-        db.execute("UPDATE pinned_papers SET pinned = 0 WHERE paper_id = ? AND user_id = ?", paper_id, session["user_id"])
-        flash(f'{paper_id} has been unpinned.')
+        db.execute(
+            "UPDATE pinned_papers SET pinned = 0 WHERE paper_id = ? AND user_id = ?",
+            paper_id,
+            session["user_id"],
+        )
+        flash(f"{paper_id} has been unpinned.")
     else:
         flash("Paper not found.")
 

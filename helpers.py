@@ -21,6 +21,7 @@ from cs50 import SQL
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
 
+
 def apology(message, code=400):
     """Render message as an apology to user."""
 
@@ -67,9 +68,9 @@ def lookup_titles():
 
     # Prepare API request
     end = datetime.datetime.now(pytz.timezone("US/Eastern"))
-    start = (end - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+    start = (end - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
     url = f"https://huggingface.co/api/daily_papers?date>{start}"
-    
+
     try:
         response = requests.get(
             url,
@@ -77,36 +78,58 @@ def lookup_titles():
             headers={"Accept": "*/*", "User-Agent": request.headers.get("User-Agent")},
         )
         response.raise_for_status()
-        quotes = json.loads(response.content.decode('utf-8'))
+        quotes = json.loads(response.content.decode("utf-8"))
         flatten_data = pd.json_normalize(quotes)
-        
+
         title = flatten_data.title
         published_at = pd.to_datetime(flatten_data.publishedAt).dt.date
-        submitted_by = flatten_data['submittedBy.fullname']
-        summary = flatten_data['paper.summary']
-        upvotes = flatten_data['paper.upvotes']
-        paper_ids = flatten_data['paper.id']
+        submitted_by = flatten_data["submittedBy.fullname"]
+        summary = flatten_data["paper.summary"]
+        upvotes = flatten_data["paper.upvotes"]
+        paper_ids = flatten_data["paper.id"]
 
-        papers_data = pd.concat([paper_ids, title, published_at, submitted_by, summary, upvotes], axis=1)
-        papers_data.columns = ['id', 'title', 'published', 'submitted_by', 'summary', 'upvotes']
-        papers_data['summary'] = papers_data['summary'].str.replace('\n', '<br>')
+        papers_data = pd.concat(
+            [paper_ids, title, published_at, submitted_by, summary, upvotes], axis=1
+        )
+        papers_data.columns = [
+            "id",
+            "title",
+            "published",
+            "submitted_by",
+            "summary",
+            "upvotes",
+        ]
+        papers_data["summary"] = papers_data["summary"].str.replace("\n", "<br>")
         papers_data.sort_values(by="upvotes", ascending=False, inplace=True)
 
-        # Convert to a list of dictionaries
-        papers = papers_data.to_dict(orient='records')
-        
+        papers_data["pinned"] = 0
+
         # Query the database to get pinned papers
-        pinned_papers = db.execute("SELECT paper_id FROM pinned_papers WHERE pinned = 1 and user_id = ?", session["user_id"])
-        pinned_paper_ids = {p['paper_id'] for p in pinned_papers}
+        pinned_papers = pd.DataFrame(db.execute(
+                "SELECT id, paper_id as title, published, submitted_by, summary, upvotes FROM pinned_papers WHERE pinned = 1 AND user_id = ?",
+                session["user_id"],
+            ))
+        
+        if len(pinned_papers)>0:
+            # Add a new column 'pinned' with value 1
+            pinned_papers["pinned"] = 1
 
-        # Add 'pinned' status to the papers
-        for paper in papers:
-            paper['pinned'] = paper['title'] in pinned_paper_ids
+            # Assuming 'papers' is also a DataFrame
+            papers_data = pd.concat([pinned_papers, papers_data])
 
+            # Drop duplicates based on the specified columns
+            papers_data.drop_duplicates(
+                ["title", "published", "submitted_by", "summary", "upvotes"],
+                inplace=True,
+            )
+
+        # Convert to a list of dictionaries
+        papers = papers_data.to_dict(orient="records")
         return papers
 
     except (KeyError, IndexError, requests.RequestException, ValueError):
         return None
+
 
 # Function to remove references and citations
 def remove_references_from_text(text):
@@ -117,37 +140,42 @@ def remove_references_from_text(text):
         if ref_index != -1:
             text = text[:ref_index].strip()
             break
-    
-    text = re.sub(r'\[\d+\]', '', text)  # e.g., [1], [12], etc.
-    text = re.sub(r'\(\w+ et al\., \d{4}\)', '', text)  # e.g., (Smith et al., 2020)
-    
+
+    text = re.sub(r"\[\d+\]", "", text)  # e.g., [1], [12], etc.
+    text = re.sub(r"\(\w+ et al\., \d{4}\)", "", text)  # e.g., (Smith et al., 2020)
+
     return text
+
 
 # Function to remove specific sections like "Literature Review"
 def remove_section_from_text(text, section_heading):
     lower_text = text.lower()
     start_index = lower_text.find(section_heading.lower())
-    
+
     if start_index == -1:
         return text
-    
-    next_section_pattern = r'\n\s*(introduction|methods|results|discussion|conclusion|references)\b'
+
+    next_section_pattern = (
+        r"\n\s*(introduction|methods|results|discussion|conclusion|references)\b"
+    )
     match = re.search(next_section_pattern, lower_text[start_index:])
-    
+
     if match:
         end_index = start_index + match.start()
     else:
         end_index = len(text)
-    
+
     return text[:start_index].strip() + "\n" + text[end_index:].strip()
+
 
 # Function to chunk text based on sections
 def chunk_text_by_sections(text, chunk_size=500):
     words = text.split()
     chunks = []
     for i in range(0, len(words), chunk_size):
-        chunks.append(" ".join(words[i:i + chunk_size]))
+        chunks.append(" ".join(words[i : i + chunk_size]))
     return chunks
+
 
 # Extract and preprocess text from PDF
 def extract_and_preprocess_text(pdf_path):
@@ -158,20 +186,22 @@ def extract_and_preprocess_text(pdf_path):
     # Combine content from all pages
     for page in data:
         full_text += page.page_content
-    
+
     # Remove unwanted sections and references
     text_without_lit_review = remove_section_from_text(full_text, "Literature Review")
     cleaned_text = remove_references_from_text(text_without_lit_review)
-    
+
     # Chunk text by sections or by fixed size
     chunks = chunk_text_by_sections(cleaned_text)
     return chunks
 
+
 # Create embeddings for text chunks
-def create_embeddings(chunks, model_name='sentence-transformers/all-MiniLM-L6-v2'):
+def create_embeddings(chunks, model_name="sentence-transformers/all-MiniLM-L6-v2"):
     model = SentenceTransformer(model_name)
     embeddings = model.encode(chunks, convert_to_tensor=True)
     return embeddings, model
+
 
 # Build a FAISS index
 def build_faiss_index(embeddings):
@@ -180,6 +210,7 @@ def build_faiss_index(embeddings):
     index.add(embedding_matrix)
     return index
 
+
 # Retrieve relevant chunks using FAISS
 def retrieve_relevant_chunks(query, index, embedding_model, chunks, top_k=5):
     query_embedding = embedding_model.encode([query], convert_to_tensor=True)
@@ -187,40 +218,46 @@ def retrieve_relevant_chunks(query, index, embedding_model, chunks, top_k=5):
     results = [chunks[idx] for idx in indices[0]]
     return results
 
+
 # Generate a response using Ollama with the relevant chunks
 def generate_response_with_ollama(relevant_chunks, query):
     conversation_history = [
-        {"role": "system", "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper."},
-        {"role": "user", "content": " ".join(relevant_chunks)}
+        {
+            "role": "system",
+            "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper.",
+        },
+        {"role": "user", "content": " ".join(relevant_chunks)},
     ]
-    
+
     response = ollama.chat(
         model="llama3.1",
         messages=conversation_history,
-        options=ollama.Options(context_length=8096)
+        options=ollama.Options(context_length=8096),
     )
-    
-    summary = response.get('message', {}).get('content', '').strip()
+
+    summary = response.get("message", {}).get("content", "").strip()
     return summary
+
 
 # Main function to process the PDF and generate a summary or answer
 def process_ml_paper(pdf_path, query):
     # Step 1: Extract and preprocess text
     chunks = extract_and_preprocess_text(pdf_path)
-    
+
     # Step 2: Create embeddings
     embeddings, embedding_model = create_embeddings(chunks)
-    
+
     # Step 3: Build FAISS index
     index = build_faiss_index(embeddings)
-    
+
     # Step 4: Retrieve relevant chunks based on the query
     relevant_chunks = retrieve_relevant_chunks(query, index, embedding_model, chunks)
-    
+
     # Step 5: Generate a response using Ollama
     summary = generate_response_with_ollama(relevant_chunks, query)
-    
+
     return summary
+
 
 def extract_text_from_pdf(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
@@ -233,24 +270,26 @@ def extract_text_from_pdf(pdf_path):
 
     # Remove the "Literature Review" section
     cleaned_text = remove_section_from_text(text, "Literature Review")
-    
+
     # Remove the references and in-text citations
     cleaned_text = remove_references_from_text(cleaned_text)
 
     # Prepare conversation history for Ollama
     conversation_history = [
-        {"role": "system", "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper."},
-        {"role": "user", "content": cleaned_text}
+        {
+            "role": "system",
+            "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper.",
+        },
+        {"role": "user", "content": cleaned_text},
     ]
-    
+
     # Generate a response using Ollama
     response = ollama.chat(
         model="llama3.1",
         messages=conversation_history,
-        options=ollama.Options(context_length=8096)
+        options=ollama.Options(context_length=8096),
     )
-    
-    # Extract and return the response content
-    summary = response.get('message', {}).get('content', '').strip()
-    return summary
 
+    # Extract and return the response content
+    summary = response.get("message", {}).get("content", "").strip()
+    return summary
