@@ -11,19 +11,20 @@ Upload PDF
             <!-- PDF Upload Area -->
             <div class="card shadow-sm border-0">
                 <div class="card-body text-center p-4">
-                    <div id="drag-drop-area" class="upload-area">
-                        <p class="text-muted mb-0">Drag & Drop your PDF here or <span class="text-primary">click to upload</span></p>
-                        <input type="file" id="pdfFileInput" class="d-none" accept="application/pdf">
+                    <div id="drag-drop-area" class="upload-area" aria-label="Drag and Drop PDF Upload Area">
+                        <p class="text-muted mb-0">Drag & Drop your PDF here or <span class="text-primary" role="button" tabindex="0">click to upload</span></p>
+                        <input type="file" id="pdfFileInput" class="d-none" accept="application/pdf" aria-labelledby="upload-instructions">
+                        <p id="upload-instructions" class="visually-hidden">Upload PDF file by dragging and dropping it here or by clicking to select a file.</p>
                     </div>
-                    <div id="upload-status" class="text-center mt-4 text-muted"></div>
+                    <div id="upload-status" class="text-center mt-4 text-muted" aria-live="polite"></div>
                 </div>
             </div>
 
             <!-- Dynamic PDF Container -->
-            <div id="pdf-container" class="mt-4"></div>
+            <div id="pdf-container" class="mt-4" aria-live="polite"></div>
 
             <!-- Text Container -->
-            <div id="text-container" class="mt-4 bg-white shadow-sm rounded p-4"></div>
+            <div id="text-container" class="mt-4 bg-white shadow-sm rounded p-4" aria-live="polite"></div>
         </div>
     </div>
 </div>
@@ -34,13 +35,16 @@ Upload PDF
         <div class="col-lg-8 mx-auto">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <form id="rag-form">
+                    <form id="rag-form" aria-labelledby="rag-form-heading">
+                        <h2 id="rag-form-heading" class="h4">RAG Query Form</h2>
                         <div class="form-group">
                             <label for="rag-query-input" class="form-label">RAG Query:</label>
-                            <input type="text" id="rag-query-input" class="form-control" placeholder="Enter your query" required>
+                            <input type="text" id="rag-query-input" class="form-control" placeholder="Enter your query" required aria-required="true" aria-describedby="rag-query-description">
+                            <p id="rag-query-description" class="visually-hidden">Please enter your query for the RAG system.</p>
                         </div>
+                        <button type="submit" class="btn btn-primary mt-3" aria-label="Submit RAG query">Submit Query</button>
                     </form>
-                    <div id="rag-response" class="mt-4"></div>
+                    <div id="rag-response" class="mt-4" aria-live="polite"></div>
                 </div>
             </div>
         </div>

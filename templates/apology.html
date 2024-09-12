@@ -5,9 +5,13 @@ Apology
 {% endblock %}
 
 {% block main %}
-<!-- https://memegen.link/ -->
-<!-- https://knowyourmeme.com/memes/grumpy-cat -->
-<img alt="{{ top }}" class="border img-fluid"
-    src="https://api.memegen.link/images/custom/{{ top | urlencode }}/{{ bottom | urlencode }}.jpg?background=https://i.imgur.com/CsCgN7Ll.png&width=400"
-    title="{{ top }}">
+<!-- Description and Source Links for Context -->
+<p class="visually-hidden">This image is a meme generator result. The top text is "{{ top }}" and the bottom text is "{{ bottom }}".</p>
+
+<!-- Accessible Image -->
+<img alt="{{ top }} - {{ bottom }}" class="border img-fluid" 
+     src="https://api.memegen.link/images/custom/{{ top | urlencode }}/{{ bottom | urlencode }}.jpg?background=https://i.imgur.com/CsCgN7Ll.png&width=400" 
+     title="{{ top }}" 
+     aria-describedby="image-description">
+<p id="image-description" class="visually-hidden">This meme features the text "{{ top }}" at the top and "{{ bottom }}" at the bottom, set against a background image of Grumpy Cat.</p>
 {% endblock %}

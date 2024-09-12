@@ -1,21 +1,26 @@
 {% extends "layout.html" %}
+
 {% block title %}
 Edit Note
 {% endblock %}
 
 {% block main %}
-<h1>Edit Note</h1>
+<h1>Edit Note" aria-live="polite">Edit Note</h1>
 
-<form action="{{ url_for('edit_note', filename=filename) }}" method="post">
+<form action="{{ url_for('edit_note', filename=filename) }}" method="post" aria-labelledby="edit-note-form">
     <div class="mb-3">
         <label for="tags" class="form-label">Tags</label>
-        <input type="text" id="tags" name="tags" class="form-control" value="{{ tags }}">
+        <input type="text" id="tags" name="tags" class="form-control" value="{{ tags }}" aria-required="true" aria-describedby="tags-description">
+        <p id="tags-description" class="visually-hidden">Enter tags for your note. This field is required.</p>
     </div>
     <div class="mb-3">
         <label for="content" class="form-label">Content</label>
-        <textarea id="content" name="content" class="form-control" rows="10">{{ content }}</textarea>
+        <textarea id="content" name="content" class="form-control" rows="10" aria-required="true" aria-describedby="content-description">{{ content }}</textarea>
+        <p id="content-description" class="visually-hidden">Write the content of your note here. This field is required.</p>
     </div>
-    <button type="submit" class="btn btn-primary">Save Changes</button>
-    <a href="{{ url_for('history') }}" class="btn btn-secondary">Cancel</a>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" aria-label="Save changes to this note">Save Changes</button>
+        <a href="{{ url_for('history') }}" class="btn btn-secondary" aria-label="Go back to history">Cancel</a>
+    </div>
 </form>
 {% endblock %}

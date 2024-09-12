@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+
 {% block title %}
 History of Saved Files
 {% endblock %}
@@ -12,17 +13,17 @@ History of Saved Files
             <div class="row">
                 {% for item in saved_data %}
                     <div class="col-md-6 mb-4">
-                        <div class="card shadow-sm border-0 h-100">
+                        <div class="card shadow-sm border-0 h-100" aria-labelledby="card-title-{{ loop.index }}">
                             <div class="card-body">
-                                <h5 class="card-title">{{ item.name }}</h5>
+                                <h5 id="card-title-{{ loop.index }}" class="card-title">{{ item.name }}</h5>
                                 <p class="card-text text-muted mb-2">Tags: {{ item.tags }}</p>
                                 <div class="markdown-content mb-3">
                                     {{ item.content|safe }}
                                 </div>
                                 <div class="d-flex justify-content-end">
-                                    <a href="{{ url_for('edit_note', filename=item.name) }}" class="btn btn-outline-primary me-2">Edit</a>
-                                    <form action="{{ url_for('delete_note', filename=item.name) }}" method="post" class="d-inline">
-                                        <button type="submit" class="btn btn-outline-danger">Delete</button>
+                                    <a href="{{ url_for('edit_note', filename=item.name) }}" class="btn btn-outline-primary me-2" role="button" aria-label="Edit {{ item.name }}">Edit</a>
+                                    <form action="{{ url_for('delete_note', filename=item.name) }}" method="post" class="d-inline" aria-labelledby="delete-form-{{ loop.index }}">
+                                        <button type="submit" class="btn btn-outline-danger" id="delete-button-{{ loop.index }}" aria-label="Delete {{ item.name }}">Delete</button>
                                     </form>
                                 </div>
                             </div>
@@ -31,7 +32,7 @@ History of Saved Files
                 {% endfor %}
             </div>
         {% else %}
-            <div class="alert alert-info text-center">
+            <div class="alert alert-info text-center" role="alert" aria-live="polite">
                 No saved files found.
             </div>
         {% endif %}

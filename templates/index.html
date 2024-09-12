@@ -20,7 +20,8 @@ Hugging Face Daily Papers
                     </p>
                     <!-- Google search link for the paper title -->
                     <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
-                        class="btn btn-outline-primary" target="_blank">
+                        class="btn btn-outline-primary" target="_blank" 
+                        aria-label="Search for {{ paper.title }} on Google">
                         Read Full Paper
                     </a>
                 </div>
@@ -38,9 +39,13 @@ Hugging Face Daily Papers
                         <input type="hidden" name="summary" value="{{ paper.summary }}">
                         <input type="hidden" name="upvotes" value="{{ paper.upvotes }}">
                         {% if paper.pinned %}
-                        <button type="submit" class="btn btn-warning btn-sm">Unpin</button>
+                        <button type="submit" class="btn btn-warning btn-sm" aria-label="Unpin {{ paper.title }}">
+                            Unpin
+                        </button>
                         {% else %}
-                        <button type="submit" class="btn btn-success btn-sm">Pin</button>
+                        <button type="submit" class="btn btn-success btn-sm" aria-label="Pin {{ paper.title }}">
+                            Pin
+                        </button>
                         {% endif %}
                     </form>
                 </div>
@@ -48,7 +53,7 @@ Hugging Face Daily Papers
         </div>
         {% endfor %}
         {% else %}
-        <div class="alert alert-info text-center">
+        <div class="alert alert-info text-center" role="alert">
             No papers found for today.
         </div>
         {% endif %}

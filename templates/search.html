@@ -1,31 +1,33 @@
 {% extends "layout.html" %}
+
 {% block title %}
 Search History
 {% endblock %}
 
 {% block main %}
 <div class="container py-5">
-    <h1 class="display-5 text-center mb-4">Search Markdown Files by Tags</h1>
+    <h1 class="display-5 text-center mb-4" id="search-history-heading">Search Markdown Files by Tags</h1>
 
     <!-- Search Form -->
-    <form method="post" action="/search" class="mb-4">
+    <form method="post" action="/search" class="mb-4" aria-labelledby="search-history-heading">
         <div class="input-group">
+            <label for="search_query" class="visually-hidden">Search by Tags</label>
             <input type="text" class="form-control form-control-lg" id="search_query" name="search_query"
-                   placeholder="Enter tags to search" aria-label="Search by Tags">
-            <button type="submit" class="btn btn-primary btn-lg">Search</button>
+                   placeholder="Enter tags to search" aria-label="Search by Tags" required>
+            <button type="submit" class="btn btn-primary btn-lg" aria-label="Submit search query">Search</button>
         </div>
     </form>
 
     <!-- Search Results -->
     <div class="mt-5">
         {% if filtered_data %}
-            <h2 class="mb-4">Search Results</h2>
-            <div class="row">
+            <h2 class="mb-4" id="search-results-heading">Search Results</h2>
+            <div class="row" aria-labelledby="search-results-heading">
                 {% for item in filtered_data %}
                     <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card shadow-sm border-0 h-100">
+                        <div class="card shadow-sm border-0 h-100" tabindex="0" aria-labelledby="item-{{ loop.index }}">
                             <div class="card-body">
-                                <h5 class="card-title">{{ item.name }}</h5>
+                                <h5 class="card-title" id="item-{{ loop.index }}">{{ item.name }}</h5>
                                 <div class="markdown-content">
                                     {{ item.content|safe }}
                                 </div>
@@ -35,7 +37,7 @@ Search History
                 {% endfor %}
             </div>
         {% else %}
-            <div class="alert alert-info text-center">
+            <div class="alert alert-info text-center" role="alert">
                 No results found.
             </div>
         {% endif %}

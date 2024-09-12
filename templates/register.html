@@ -5,21 +5,24 @@ Register
 {% endblock %}
 
 {% block main %}
-<form action="/register" method="post">
-    <!-- submit button will trigger a post to register function -->
+<form action="/register" method="post" aria-labelledby="registration-form">
     <div class="mb-3">
-        <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username"
-            type="text">
+        <label for="username" class="form-label">Username</label>
+        <input autocomplete="off" autofocus id="username" class="form-control mx-auto w-auto" name="username" placeholder="Username"
+            type="text" aria-required="true" aria-label="Username">
     </div>
     <div class="mb-3">
-        <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
+        <label for="password" class="form-label">Password</label>
+        <input id="password" class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password"
+            aria-required="true" aria-label="Password">
     </div>
     <div class="mb-3">
-        <input class="form-control mx-auto w-auto" name="confirmation" placeholder="Password(Confirm)"
-            type="password">
+        <label for="confirmation" class="form-label">Confirm Password</label>
+        <input id="confirmation" class="form-control mx-auto w-auto" name="confirmation" placeholder="Password (Confirm)"
+            type="password" aria-required="true" aria-label="Confirm Password">
     </div>
     <div class="text-center"> <!-- Centering the button -->
-        <button class="btn btn-primary" type="submit">Register</button>
+        <button class="btn btn-primary" type="submit" aria-label="Submit registration form">Register</button>
     </div>
 </form>
 {% endblock %}

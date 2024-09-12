@@ -5,16 +5,19 @@ Log In
 {% endblock %}
 
 {% block main %}
-<form action="/login" method="post">
+<form action="/login" method="post" aria-labelledby="login-form">
     <div class="mb-3">
-        <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username"
-            type="text">
+        <label for="username" class="form-label">Username</label>
+        <input autocomplete="off" autofocus id="username" class="form-control mx-auto w-auto" name="username" placeholder="Username"
+            type="text" aria-required="true" aria-label="Username">
     </div>
     <div class="mb-3">
-        <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
+        <label for="password" class="form-label">Password</label>
+        <input id="password" class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password"
+            aria-required="true" aria-label="Password">
     </div>
-    <div class="text-center"> <!-- Centering the button -->
-        <button class="btn btn-primary" type="submit">Log In</button>
+    <div class="text-center">
+        <button class="btn btn-primary" type="submit" aria-label="Submit login form">Log In</button>
     </div>
 </form>
 {% endblock %}

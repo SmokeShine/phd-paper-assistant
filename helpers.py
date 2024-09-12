@@ -17,18 +17,23 @@ import fitz
 from langchain_community.document_loaders import PyMuPDFLoader
 import ollama
 from cs50 import SQL
+import diskcache as dc  # Adding diskcache for caching
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
 
+# Initialize disk cache
+cache = dc.Cache('cache_directory')  # Specify a directory for cache storage
+
+CACHE_EXPIRATION_DAYS = 7  # Cache expiration period
+CACHE_KEY_DATA = 'lookup_titles_data'
+CACHE_KEY_TIMESTAMP = 'lookup_titles_timestamp'
 
 def apology(message, code=400):
     """Render message as an apology to user."""
-
     def escape(s):
         """
         Escape special characters.
-
         https://github.com/jacebrowning/memegen#special-characters
         """
         for old, new in [
@@ -46,14 +51,11 @@ def apology(message, code=400):
 
     return render_template("apology.html", top=code, bottom=escape(message)), code
 
-
 def login_required(f):
     """
     Decorate routes to require login.
-
     https://flask.palletsprojects.com/en/latest/patterns/viewdecorators/
     """
-
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if session.get("user_id") is None:
@@ -62,12 +64,18 @@ def login_required(f):
 
     return decorated_function
 
-
 def lookup_titles():
     """Look up recent papers from Hugging Face and merge with pinning data from SQLite."""
 
-    # Prepare API request
-    end = datetime.datetime.now(pytz.timezone("US/Eastern"))
+    current_time = datetime.datetime.now(pytz.timezone("US/Eastern"))
+
+    # Check if the cache data exists and is still valid
+    if CACHE_KEY_TIMESTAMP in cache:
+        cache_time = cache[CACHE_KEY_TIMESTAMP]
+        if (current_time - cache_time).days <= CACHE_EXPIRATION_DAYS:
+            return cache[CACHE_KEY_DATA]
+
+    end = current_time
     start = (end - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
     url = f"https://huggingface.co/api/daily_papers?date>{start}"
 
@@ -110,7 +118,7 @@ def lookup_titles():
                 session["user_id"],
             ))
         
-        if len(pinned_papers)>0:
+        if len(pinned_papers) > 0:
             # Add a new column 'pinned' with value 1
             pinned_papers["pinned"] = 1
 
@@ -123,13 +131,15 @@ def lookup_titles():
                 inplace=True,
             )
 
-        # Convert to a list of dictionaries
         papers = papers_data.to_dict(orient="records")
+
+        # Update the cache with new data and timestamp
+        cache[CACHE_KEY_DATA] = papers
+        cache[CACHE_KEY_TIMESTAMP] = current_time
         return papers
 
     except (KeyError, IndexError, requests.RequestException, ValueError):
         return None
-
 
 # Function to remove references and citations
 def remove_references_from_text(text):
@@ -145,7 +155,6 @@ def remove_references_from_text(text):
     text = re.sub(r"\(\w+ et al\., \d{4}\)", "", text)  # e.g., (Smith et al., 2020)
 
     return text
-
 
 # Function to remove specific sections like "Literature Review"
 def remove_section_from_text(text, section_heading):
@@ -167,7 +176,6 @@ def remove_section_from_text(text, section_heading):
 
     return text[:start_index].strip() + "\n" + text[end_index:].strip()
 
-
 # Function to chunk text based on sections
 def chunk_text_by_sections(text, chunk_size=500):
     words = text.split()
@@ -175,7 +183,6 @@ def chunk_text_by_sections(text, chunk_size=500):
     for i in range(0, len(words), chunk_size):
         chunks.append(" ".join(words[i : i + chunk_size]))
     return chunks
-
 
 # Extract and preprocess text from PDF
 def extract_and_preprocess_text(pdf_path):
@@ -195,13 +202,11 @@ def extract_and_preprocess_text(pdf_path):
     chunks = chunk_text_by_sections(cleaned_text)
     return chunks
 
-
 # Create embeddings for text chunks
 def create_embeddings(chunks, model_name="sentence-transformers/all-MiniLM-L6-v2"):
     model = SentenceTransformer(model_name)
     embeddings = model.encode(chunks, convert_to_tensor=True)
     return embeddings, model
-
 
 # Build a FAISS index
 def build_faiss_index(embeddings):
@@ -210,14 +215,12 @@ def build_faiss_index(embeddings):
     index.add(embedding_matrix)
     return index
 
-
 # Retrieve relevant chunks using FAISS
 def retrieve_relevant_chunks(query, index, embedding_model, chunks, top_k=5):
     query_embedding = embedding_model.encode([query], convert_to_tensor=True)
     distances, indices = index.search(np.array([query_embedding]), top_k)
     results = [chunks[idx] for idx in indices[0]]
     return results
-
 
 # Generate a response using Ollama with the relevant chunks
 def generate_response_with_ollama(relevant_chunks, query):
@@ -238,7 +241,6 @@ def generate_response_with_ollama(relevant_chunks, query):
     summary = response.get("message", {}).get("content", "").strip()
     return summary
 
-
 # Main function to process the PDF and generate a summary or answer
 def process_ml_paper(pdf_path, query):
     # Step 1: Extract and preprocess text
@@ -257,7 +259,6 @@ def process_ml_paper(pdf_path, query):
     summary = generate_response_with_ollama(relevant_chunks, query)
 
     return summary
-
 
 def extract_text_from_pdf(pdf_path):
     loader = PyMuPDFLoader(pdf_path)

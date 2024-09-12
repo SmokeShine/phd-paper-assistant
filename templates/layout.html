@@ -13,16 +13,16 @@
     <link href="/static/styles.css" rel="stylesheet">
 
     <!-- Favicon -->
-    <link href="/static/favicon.ico" rel="icon">
+    <link href="/static/favicon.ico" rel="icon" type="image/x-icon">
 
     <title>PhD Paper Assistant: {% block title %}{% endblock %}</title>
 </head>
 
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" role="navigation" aria-label="Main navigation">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/">PhD Paper Assistant</a>
+            <a class="navbar-brand fw-bold" href="/" aria-label="Go to home page">PhD Paper Assistant</a>
             <button aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler"
                 data-bs-target="#navbar" data-bs-toggle="collapse" type="button">
                 <span class="navbar-toggler-icon"></span>
@@ -30,18 +30,32 @@
             <div class="collapse navbar-collapse" id="navbar">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     {% if session["user_id"] %}
-                    <li class="nav-item"><a class="nav-link" href="/search">Search Tags</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/upload_pdf">Upload PDF</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/write_notes">Write Notes</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/search" aria-label="Search Tags">Search Tags</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history" aria-label="View History">History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/upload_pdf" aria-label="Upload PDF">Upload PDF</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/write_notes" aria-label="Write Notes">Write Notes</a>
+                    </li>
                     {% else %}
-                    <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/login">Log In</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register" aria-label="Register">Register</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login" aria-label="Log In">Log In</a>
+                    </li>
                     {% endif %}
                 </ul>
                 {% if session["user_id"] %}
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout" aria-label="Log Out">Log Out</a>
+                    </li>
                 </ul>
                 {% endif %}
             </div>
@@ -55,10 +69,11 @@
     {% endif %}
 
     <!-- Main content -->
-    <main class="container my-4">
+    <main class="container my-4" role="main">
         {% block main %}
         <!-- Drag-and-Drop PDF Upload Area -->
-        <div id="drag-drop-area" class="border border-primary rounded p-4 text-center mb-4 bg-light shadow-sm">
+        <div id="drag-drop-area" class="border border-primary rounded p-4 text-center mb-4 bg-light shadow-sm"
+            aria-label="Drag and Drop PDF Upload Area">
             <h2 class="h4">Drag and Drop Your PDF Here</h2>
             <p class="text-muted">or <span class="text-primary">click to select</span></p>
             <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;">
@@ -68,18 +83,18 @@
     </main>
 
     <!-- Context menu -->
-    <div id="context-menu" class="shadow-lg p-4 rounded" style="max-width: 800px; margin: 20px auto;">
+    <div id="context-menu" class="shadow-lg p-4 rounded" style="max-width: 800px; margin: 20px auto;" aria-labelledby="context-menu">
         <div id="selected-text" class="mb-3"></div>
         <div id="askollama-container" class="p-3 bg-white border border-secondary rounded">
             <textarea id="custom-question" class="form-control mb-3" placeholder="Type your question here..."
-                style="height: 150px;"></textarea>
+                style="height: 150px;" aria-label="Custom question"></textarea>
             <div id="loading-message" class="text-center text-muted mb-3" style="display: none;">Loading...</div>
-            <div id="askollama-history" class="bg-light border border-secondary rounded p-3" style="max-height: 300px; overflow-y: auto;">
+            <div id="askollama-history" class="bg-light border border-secondary rounded p-3" style="max-height: 300px; overflow-y: auto;" aria-label="Ask Ollama History">
             </div>
             <div class="ollama-actions mt-3 d-flex justify-content-end gap-2">
-                <input type="text" id="ollama-tags" class="form-control form-control-sm" placeholder="Enter tags (comma separated)">
-                <button id="save-ollama-content" class="btn btn-primary btn-sm">Save</button>
-                <button id="clear-ollama-content" class="btn btn-danger btn-sm">Clear</button>
+                <input type="text" id="ollama-tags" class="form-control form-control-sm" placeholder="Enter tags (comma separated)" aria-label="Tags">
+                <button id="save-ollama-content" class="btn btn-primary btn-sm" aria-label="Save Ollama Content">Save</button>
+                <button id="clear-ollama-content" class="btn btn-danger btn-sm" aria-label="Clear Ollama Content">Clear</button>
             </div>
         </div>
     </div>
