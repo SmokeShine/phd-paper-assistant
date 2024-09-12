@@ -2,9 +2,6 @@ import os
 import fitz
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain.chains import RetrievalQA
-from langchain_community.llms import OpenAI
 from flask import (
     Flask,
     flash,
@@ -26,30 +23,114 @@ from helpers import (
     remove_section_from_text,
     remove_references_from_text,
     db,
-    SQL,
 )
 import ollama
-from langchain_community.llms import Ollama
 import uuid
 import markdown
+import networkx as nx
+import faiss
+import numpy as np
+import igraph as ig
+from sentence_transformers import SentenceTransformer
+import leidenalg
+
+# Use a more suitable model for scientific papers
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 # Configure application
 app = Flask(__name__)
 
+
+
+TAGS_FOLDER = "tags"
+os.makedirs(TAGS_FOLDER, exist_ok=True)
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 UPLOAD_FOLDER = "upload_files"  # Directory to save files
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 vector_store = None
+Session(app)
 
+# Use a more suitable model for scientific papers
+def build_knowledge_graph(chunks):
+    G = nx.Graph()
+    model = SentenceTransformer(MODEL_NAME)
+
+    for i, chunk in enumerate(chunks):
+        G.add_node(i, content=chunk)
+
+        # Create edges based on semantic similarity
+        if i > 0:
+            for j in range(i):
+                embeddings = model.encode([chunks[i], chunks[j]])
+                similarity = np.dot(embeddings[0], embeddings[1]) / (np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1]))
+                if similarity > 0.5:  # Threshold for edge creation
+                    G.add_edge(i, j, weight=similarity)
+
+    return G
+
+def hierarchical_clustering(graph):
+    ig_graph = ig.Graph.from_networkx(graph)
+    partition = leidenalg.find_partition(ig_graph, leidenalg.ModularityVertexPartition)
+    communities = [frozenset(community) for community in partition]
+    return communities
+
+def summarize_communities(communities, graph):
+    summaries = {}
+    for i, community in enumerate(communities):
+        subgraph = graph.subgraph(community)
+        summary = generate_community_summary(subgraph)
+        summaries[f"community_{i}"] = summary
+    return summaries
+
+def generate_community_summary(subgraph):
+    content = " ".join([subgraph.nodes[node]['content'] for node in subgraph.nodes])
+    prompt = f"Summarize the following content in 2-3 sentences:\n\n{content}"
+    response = ollama.generate(model="llama3.1", prompt=prompt)
+    return response['response']
+
+def create_embeddings(chunks):
+    model = SentenceTransformer(MODEL_NAME)
+    return model.encode(chunks), model
+
+def build_faiss_index(embeddings):
+    dimension = embeddings.shape[1]
+    index = faiss.IndexFlatL2(dimension)
+    index.add(embeddings)
+    return index
+
+def process_query(query, graph, summaries, index, chunks, embedding_model):
+    query_embedding = embedding_model.encode([query])
+    _, indices = index.search(query_embedding, k=5)
+    relevant_chunks = [chunks[i] for i in indices[0]]
+    
+    # Use relevant chunks, graph information, and community summaries to generate a response
+    response = generate_response_with_ollama(query, relevant_chunks, graph, summaries)
+    return response
+
+def generate_response_with_ollama(query, relevant_chunks, graph, summaries):
+    context = "\n".join(relevant_chunks)
+    graph_info = f"Graph with {len(graph.nodes())} nodes and {len(graph.edges())} edges"
+    summary_info = "\n".join([f"{k}: {v}" for k, v in summaries.items()])
+
+    prompt = f"""
+    Query: {query}
+    Context: {context}
+    Graph Information: {graph_info}
+    Community Summaries: {summary_info}
+
+    Based on the above information, provide a comprehensive answer to the query.
+    """
+    
+    response = ollama.generate(model="llama3.1", prompt=prompt)
+    return response['response']
 
 def initialize_vector_store(pdf_filename):
     global vector_store
 
     file_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
 
-    # Check if the file exists
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"The file {file_path} does not exist.")
 
@@ -71,18 +152,27 @@ def initialize_vector_store(pdf_filename):
     if not cleaned_text:
         raise ValueError("No text extracted from the PDF.")
 
-    # Initialize the embedding model
-    embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    chunks = cleaned_text.split("\n\n")  # Split cleaned text into chunks
+    vector_store = {"chunks": chunks}
 
-    # Create FAISS vector store
-    vector_store = FAISS.from_texts([cleaned_text], embedding_model)
+    # Build knowledge graph from chunks
+    graph = build_knowledge_graph(chunks)
+    communities = hierarchical_clustering(graph)
+    summaries = summarize_communities(communities, graph)
+
+    # Create embeddings for chunks and build FAISS index
+    embeddings, embedding_model = create_embeddings(chunks)
+    index = build_faiss_index(embeddings)
+
+    # Store all necessary components in the vector store
+    vector_store.update({
+        "graph": graph,
+        "summaries": summaries,
+        "index": index,
+        "embedding_model": embedding_model
+    })
 
 
-Session(app)
-
-
-TAGS_FOLDER = "tags"
-os.makedirs(TAGS_FOLDER, exist_ok=True)
 
 
 @app.after_request
@@ -505,16 +595,18 @@ def rag():
     if vector_store is None:
         return jsonify({"error": "Vector store is not initialized"}), 500
 
-    # Create a RetrievalQA chain
-    retriever = vector_store.as_retriever()
-    llm = Ollama(base_url="http://localhost:11434", model="llama3.1")
-    rag_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
+    # Retrieve components from the vector store
+    graph = vector_store["graph"]
+    summaries = vector_store["summaries"]
+    index = vector_store["index"]
+    embedding_model = vector_store["embedding_model"]
+    chunks = vector_store["chunks"]
 
-    # Get the answer from the RAG model
     try:
-        answer = rag_chain.invoke({"query": query})
-
-        return jsonify({"answer": answer["result"]}), 200
+        # Process the query using the GraphRAG-inspired method
+        response = process_query(query, graph, summaries, index, chunks, embedding_model)
+        
+        return jsonify({"answer": response}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

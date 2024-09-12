@@ -266,7 +266,7 @@ def extract_text_from_pdf(pdf_path):
     text = ""
 
     # Extract content from the first four pages
-    for i, page in enumerate(data[:4]):
+    for i, page in enumerate(data):
         text += page.page_content
 
     # Remove the "Literature Review" section
