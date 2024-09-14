@@ -1,4 +1,5 @@
 import os
+from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from flask import (
@@ -182,19 +183,16 @@ def summarize_communities(communities, graph):
 
 
 def generate_answers_from_communities(community_summaries, query):
-    intermediate_answers = []
-    for index, summary in enumerate(community_summaries):
-        response = ollama.chat(
-            model="llama3.1",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Answer the following query based on the provided summary.",
-                },
-                {"role": "user", "content": f"Query: {query} Summary: {summary}"},
-            ],
-        )
-        intermediate_answers.append(response["message"]["content"])
+    model = SentenceTransformer(MODEL_NAME)
+    query_embedding = model.encode([query])
+    summaries_embeddings = model.encode(community_summaries)
+
+    # Compute cosine similarities between query and each community summary
+    similarities = cosine_similarity(query_embedding, summaries_embeddings)
+
+    # Find the index of the most similar community summary
+    closest_index = similarities.argmax()
+    closest_summary = community_summaries[closest_index]
 
     final_response = ollama.chat(
         model="llama3.1",
@@ -205,7 +203,7 @@ def generate_answers_from_communities(community_summaries, query):
             },
             {
                 "role": "user",
-                "content": f"Intermediate answers: {intermediate_answers}",
+                "content": f"Query: {query} Summary: {closest_summary}",
             },
         ],
     )
