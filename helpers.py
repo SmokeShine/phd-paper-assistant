@@ -335,25 +335,7 @@ def extract_text_from_pdf(pdf_path):
     # Remove the references and in-text citations
     cleaned_text = remove_references_from_text(cleaned_text)
 
-    # Prepare conversation history for Ollama
-    conversation_history = [
-        {
-            "role": "system",
-            "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning.",
-        },
-        {"role": "user", "content": cleaned_text},
-    ]
-
-    # Generate a response using Ollama
-    response = ollama.chat(
-        model="llama3.1",
-        messages=conversation_history,
-        options=ollama.Options(context_length=8096),
-    )
-
-    # Extract and return the response content
-    summary = response.get("message", {}).get("content", "").strip()
-    return summary
+    return cleaned_text
 
 
 class VectorStore:

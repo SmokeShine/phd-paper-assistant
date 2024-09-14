@@ -531,11 +531,14 @@ def upload_pdf():
                     # Load the vector store from disk if the file exists
                     with open(vector_store_path, 'rb') as f:
                         vector_store = pickle.load(f)
+                        text = extract_text_from_pdf(file_path)
+                        session["documents"] = [text]  # Store text in session
                     return jsonify(
                         {
                             "success": True,
                             "message": "Vector store loaded from previous upload!",
                             "file_url": f"/uploads/{file.filename}",
+                            "extracted_text": text,
                             "vector_store_file": vector_store_filename,  # Provide the saved vector store filename
                         }
                     )
