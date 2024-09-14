@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData();
         formData.append('pdfFile', file);
 
-        status.textContent = 'Uploading...'; // Show uploading status
+        status.textContent = 'Uploading and Initializing In Memory Vector Store for RAG....'; // Show uploading status
 
         fetch('/upload_pdf', {
             method: 'POST',

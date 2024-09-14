@@ -1,5 +1,4 @@
 import os
-import fitz
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from flask import (
@@ -23,6 +22,7 @@ from helpers import (
     remove_section_from_text,
     remove_references_from_text,
     db,
+    VectorStore
 )
 import ollama
 import uuid
@@ -41,7 +41,6 @@ MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 app = Flask(__name__)
 
 
-
 TAGS_FOLDER = "tags"
 os.makedirs(TAGS_FOLDER, exist_ok=True)
 # Configure session to use filesystem (instead of signed cookies)
@@ -49,9 +48,9 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 UPLOAD_FOLDER = "upload_files"  # Directory to save files
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-vector_store = None
-Session(app)
 
+vector_store = VectorStore()
+Session(app)
 
 
 def hierarchical_clustering(graph):
@@ -65,23 +64,29 @@ def split_documents_into_chunks(documents, chunk_size=600, overlap_size=100):
     chunks = []
     for document in documents:
         for i in range(0, len(document), chunk_size - overlap_size):
-            chunk = document[i:i + chunk_size]
+            chunk = document[i : i + chunk_size]
             chunks.append(chunk)
     return chunks
+
+
 def extract_elements_from_chunks(chunks):
     elements = []
     for index, chunk in enumerate(chunks):
         response = ollama.chat(
             model="llama3.1",
             messages=[
-                {"role": "system", "content": "Extract entities and relationships from the following text."},
-                {"role": "user", "content": chunk}
-            ]
+                {
+                    "role": "system",
+                    "content": "Extract entities and relationships from the following text.",
+                },
+                {"role": "user", "content": chunk},
+            ],
         )
-        
-        entities_and_relations = response["message"]['content']
+
+        entities_and_relations = response["message"]["content"]
         elements.append(entities_and_relations)
     return elements
+
 
 def summarize_elements(elements):
     summaries = []
@@ -89,13 +94,17 @@ def summarize_elements(elements):
         response = ollama.chat(
             model="llama3.1",
             messages=[
-                {"role": "system", "content": "Summarize the following entities and relationships in a structured format. Use \"->\" to represent relationships, after the \"Relationships:\" word."},
-                {"role": "user", "content": element}
-            ]
+                {
+                    "role": "system",
+                    "content": 'Summarize the following entities and relationships in a structured format. Use "->" to represent relationships, after the "Relationships:" word.',
+                },
+                {"role": "user", "content": element},
+            ],
         )
-        summary = response["message"]['content']
+        summary = response["message"]["content"]
         summaries.append(summary)
     return summaries
+
 
 def build_graph_from_summaries(summaries):
     G = nx.Graph()
@@ -109,7 +118,9 @@ def build_graph_from_summaries(summaries):
                 entities_section = True
                 relationships_section = False
                 continue
-            elif line.startswith("### Relationships:") or line.startswith("**Relationships:**"):
+            elif line.startswith("### Relationships:") or line.startswith(
+                "**Relationships:**"
+            ):
                 entities_section = False
                 relationships_section = True
                 continue
@@ -129,6 +140,7 @@ def build_graph_from_summaries(summaries):
                     G.add_edge(source, target, label=relation)
     return G
 
+
 def detect_communities(graph):
     node_to_index = {node: i for i, node in enumerate(graph.nodes())}
     index_to_node = {i: node for node, i in node_to_index.items()}
@@ -140,9 +152,10 @@ def detect_communities(graph):
 
     return communities
 
+
 def summarize_communities(communities, graph):
     community_summaries = []
-    
+
     for index, community in enumerate(communities):
         subgraph = graph.subgraph(set(community))
         nodes = list(subgraph.nodes)
@@ -156,13 +169,17 @@ def summarize_communities(communities, graph):
         response = ollama.chat(
             model="llama3.1",
             messages=[
-                {"role": "system", "content": "Summarize the following community of entities and relationships."},
-                {"role": "user", "content": description}
-            ]
+                {
+                    "role": "system",
+                    "content": "Summarize the following community of entities and relationships.",
+                },
+                {"role": "user", "content": description},
+            ],
         )
-        summary = response["message"]['content']
+        summary = response["message"]["content"]
         community_summaries.append(summary)
     return community_summaries
+
 
 def generate_answers_from_communities(community_summaries, query):
     intermediate_answers = []
@@ -170,21 +187,31 @@ def generate_answers_from_communities(community_summaries, query):
         response = ollama.chat(
             model="llama3.1",
             messages=[
-                {"role": "system", "content": "Answer the following query based on the provided summary."},
-                {"role": "user", "content": f"Query: {query} Summary: {summary}"}
-            ]
+                {
+                    "role": "system",
+                    "content": "Answer the following query based on the provided summary.",
+                },
+                {"role": "user", "content": f"Query: {query} Summary: {summary}"},
+            ],
         )
-        intermediate_answers.append(response["message"]['content'])
+        intermediate_answers.append(response["message"]["content"])
 
     final_response = ollama.chat(
         model="llama3.1",
         messages=[
-            {"role": "system", "content": "Combine these answers into a final, concise response."},
-            {"role": "user", "content": f"Intermediate answers: {intermediate_answers}"}
-        ]
+            {
+                "role": "system",
+                "content": "Combine these answers into a final, concise response.",
+            },
+            {
+                "role": "user",
+                "content": f"Intermediate answers: {intermediate_answers}",
+            },
+        ],
     )
-    final_answer = final_response["message"]['content']
+    final_answer = final_response["message"]["content"]
     return final_answer
+
 
 @app.after_request
 def after_request(response):
@@ -499,10 +526,32 @@ def upload_pdf():
 
             # Extract text from the PDF
             text = extract_text_from_pdf(file_path)
-            session['documents'] = [text]  # Store text in session
-
+            session["documents"] = [text]  # Store text in session
+            
             # Initialize vector store with the new PDF
             try:
+                
+                # Save documents to vector store
+                vector_store.save("documents", text)
+
+                # Optionally, pre-compute and save chunks, elements, summaries, etc.
+                chunks = split_documents_into_chunks([text])
+                vector_store.save("chunks", chunks)
+
+                elements = extract_elements_from_chunks(chunks)
+                vector_store.save("elements", elements)
+
+                summaries = summarize_elements(elements)
+                vector_store.save("summaries", summaries)
+
+                graph = build_graph_from_summaries(summaries)
+                vector_store.save("graph", graph)
+
+                communities = detect_communities(graph)
+                vector_store.save("communities", communities)
+
+                community_summaries = summarize_communities(communities, graph)
+                vector_store.save("community_summaries", community_summaries)
                 return jsonify(
                     {
                         "success": True,
@@ -598,24 +647,29 @@ def delete_note(filename):
 
 @app.route("/rag_query", methods=["POST"])
 @login_required
-def rag():
+def rag_query():
     query = request.json.get("query")
     if not query:
         return jsonify({"error": "Query parameter is required"}), 400
 
-    documents = session.get('documents', [])
-    
     try:
-        chunks = split_documents_into_chunks(documents)
-        elements = extract_elements_from_chunks(chunks)
-        summaries = summarize_elements(elements)
-        graph = build_graph_from_summaries(summaries)
+        # Load intermediate data from vector store with fallback logic
         
-        communities = detect_communities(graph)
-        community_summaries = summarize_communities(communities, graph)
-        response  = generate_answers_from_communities(community_summaries, query)
+        documents = vector_store.load('documents')
+        if not documents:
+            return jsonify({"error": "No documents available for processing"}), 500
+        
+        chunks = vector_store.load('chunks') or split_documents_into_chunks([documents])
+        elements = vector_store.load('elements') or extract_elements_from_chunks(chunks)
+        summaries = vector_store.load('summaries') or summarize_elements(elements)
+        graph = vector_store.load('graph') or build_graph_from_summaries(summaries)
+        communities = vector_store.load('communities') or detect_communities(graph)
+        community_summaries = vector_store.load('community_summaries') or summarize_communities(communities, graph)
+        
+        response = generate_answers_from_communities(community_summaries, query)
         
         return jsonify({"answer": response}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -682,13 +736,3 @@ def unpin_paper(paper_id):
         flash("Paper not found.")
 
     return redirect(url_for("index"))
-
-@app.route("/get_uploaded_pdfs", methods=["GET"])
-@login_required
-def get_uploaded_pdfs():
-    try:
-        # Retrieve list of uploaded PDFs from session or storage
-        uploaded_pdfs = [{'name': filename} for filename in os.listdir(app.config["upload_files"]) if filename.endswith('.pdf')]
-        return jsonify({"pdfs": uploaded_pdfs}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
