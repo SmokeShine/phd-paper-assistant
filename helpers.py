@@ -83,7 +83,7 @@ def lookup_titles():
             session["user_id"],
         )
     )
-
+    
     # Check if the query returned any results
     if not pinned_papers_db.empty:
         # If there are rows, add the 'pinned' column
@@ -105,10 +105,13 @@ def lookup_titles():
 
             # Condition 1: Update cache if a paper is pinned in DB but not in the cache
             db_not_in_cache = pinned_papers_db[~pinned_papers_db["title"].isin(cached_pinned["title"])]
+            
             if not db_not_in_cache.empty:
                 # Update cached papers with pinned status
                 for index, row in db_not_in_cache.iterrows():
-                    cached_papers.loc[cached_papers['title'] == row['title'], 'pinned'] = 1
+                    new_paper = row.to_dict()
+                    new_paper["pinned"] = 1
+                    cached_papers = cached_papers.append(new_paper, ignore_index=True)
 
             # Condition 2: Update cache if a paper is pinned in cache but not in DB
             cache_not_in_db = cached_pinned[~cached_pinned["title"].isin(pinned_papers_db["title"])]
