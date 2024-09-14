@@ -3,6 +3,8 @@ import datetime
 import numpy as np
 import pytz
 import requests
+import os
+import pickle
 from sentence_transformers import SentenceTransformer
 import faiss
 import urllib
@@ -74,12 +76,60 @@ def lookup_titles():
 
     current_time = datetime.datetime.now(pytz.timezone("US/Eastern"))
 
+    # Query the database for pinned papers (should be done regardless of cache validity)
+    pinned_papers_db = pd.DataFrame(
+        db.execute(
+            "SELECT id, paper_id as title, published, submitted_by, summary, upvotes FROM pinned_papers WHERE pinned = 1 AND user_id = ?",
+            session["user_id"],
+        )
+    )
+
+    # Check if the query returned any results
+    if not pinned_papers_db.empty:
+        # If there are rows, add the 'pinned' column
+        pinned_papers_db["pinned"] = 1
+    else:
+        # If no pinned papers, ensure the DataFrame has the expected structure with empty columns
+        pinned_papers_db = pd.DataFrame(columns=["id", "title", "published", "submitted_by", "summary", "upvotes", "pinned"])
+
     # Check if the cache data exists and is still valid
     if CACHE_KEY_TIMESTAMP in cache:
         cache_time = cache[CACHE_KEY_TIMESTAMP]
-        if (current_time - cache_time).days <= CACHE_EXPIRATION_DAYS:
-            return cache[CACHE_KEY_DATA]
 
+        if (current_time - cache_time).days <= CACHE_EXPIRATION_DAYS:
+            # Get the cached data
+            cached_papers = pd.DataFrame(cache[CACHE_KEY_DATA])
+
+            # Check for any inconsistencies between cached pinned papers and DB pinned papers
+            cached_pinned = cached_papers[cached_papers["pinned"] == 1]
+
+            # Condition 1: Update cache if a paper is pinned in DB but not in the cache
+            db_not_in_cache = pinned_papers_db[~pinned_papers_db["title"].isin(cached_pinned["title"])]
+            if not db_not_in_cache.empty:
+                # Update cached papers with pinned status
+                for index, row in db_not_in_cache.iterrows():
+                    cached_papers.loc[cached_papers['title'] == row['title'], 'pinned'] = 1
+
+            # Condition 2: Update cache if a paper is pinned in cache but not in DB
+            cache_not_in_db = cached_pinned[~cached_pinned["title"].isin(pinned_papers_db["title"])]
+            if not cache_not_in_db.empty:
+                # Set pinned status to 0 for papers no longer pinned in the DB
+                for index, row in cache_not_in_db.iterrows():
+                    cached_papers.loc[cached_papers['title'] == row['title'], 'pinned'] = 0
+
+            # Now sort the cached papers: pinned first, then unpinned by upvotes
+            cached_papers.sort_values(by=["pinned", "upvotes"], ascending=[False, False], inplace=True)
+
+            # Convert the updated DataFrame back to a dictionary format
+            papers = cached_papers.to_dict(orient="records")
+
+            # Update the cache with the modified data
+            cache[CACHE_KEY_DATA] = papers
+            cache[CACHE_KEY_TIMESTAMP] = current_time
+
+            return papers
+
+    # If cache is expired or doesn't exist, fetch new data
     end = current_time
     start = (end - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
     url = f"https://huggingface.co/api/daily_papers?date>{start}"
@@ -115,32 +165,25 @@ def lookup_titles():
         papers_data["summary"] = papers_data["summary"].str.replace("\n", "<br>")
         papers_data.sort_values(by="upvotes", ascending=False, inplace=True)
 
-        papers_data["pinned"] = 0
+        papers_data["pinned"] = 0  # Initialize all as unpinned
 
-        # Query the database to get pinned papers
-        pinned_papers = pd.DataFrame(
-            db.execute(
-                "SELECT id, paper_id as title, published, submitted_by, summary, upvotes FROM pinned_papers WHERE pinned = 1 AND user_id = ?",
-                session["user_id"],
-            )
-        )
+        # If there are pinned papers, merge them with the fetched papers
+        if not pinned_papers_db.empty:
+            papers_data = pd.concat([pinned_papers_db, papers_data])
 
-        if len(pinned_papers) > 0:
-            # Add a new column 'pinned' with value 1
-            pinned_papers["pinned"] = 1
-
-            # Assuming 'papers' is also a DataFrame
-            papers_data = pd.concat([pinned_papers, papers_data])
-
-            # Drop duplicates based on the specified columns
+            # Drop duplicates based on key columns
             papers_data.drop_duplicates(
                 ["title", "published", "submitted_by", "summary", "upvotes"],
                 inplace=True,
             )
 
+        # Sort: pinned papers on top, then unpinned by upvotes
+        papers_data.sort_values(by=["pinned", "upvotes"], ascending=[False, False], inplace=True)
+
+        # Convert the final DataFrame to a dictionary format
         papers = papers_data.to_dict(orient="records")
 
-        # Update the cache with new data and timestamp
+        # Update the cache with the new data and timestamp
         cache[CACHE_KEY_DATA] = papers
         cache[CACHE_KEY_TIMESTAMP] = current_time
         return papers
@@ -328,3 +371,18 @@ class VectorStore:
     def exists(self, key):
         return key in self.store
     
+    def clear(self):
+        self.store.clear()
+    
+    def save_to_disk(self, filename):
+        if not filename.endswith(".pkl"):
+            filename += ".pkl"
+        with open(filename, "wb") as f:
+            pickle.dump(self.store, f)
+
+    def load_from_disk(self, filename):
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"File '{filename}' not found.")
+        with open(filename, "rb") as f:
+            self.store = pickle.load(f)
+        

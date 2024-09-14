@@ -1,4 +1,5 @@
 import os
+import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.embeddings import SentenceTransformerEmbeddings
@@ -37,6 +38,7 @@ import leidenalg
 
 # Use a more suitable model for scientific papers
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+model = SentenceTransformer(MODEL_NAME)
 
 # Configure application
 app = Flask(__name__)
@@ -182,11 +184,9 @@ def summarize_communities(communities, graph):
     return community_summaries
 
 
-def generate_answers_from_communities(community_summaries, query):
-    model = SentenceTransformer(MODEL_NAME)
+def generate_answers_from_communities(summaries_embeddings,community_summaries, query):
+    
     query_embedding = model.encode([query])
-    summaries_embeddings = model.encode(community_summaries)
-
     # Compute cosine similarities between query and each community summary
     similarities = cosine_similarity(query_embedding, summaries_embeddings)
 
@@ -199,7 +199,7 @@ def generate_answers_from_communities(community_summaries, query):
         messages=[
             {
                 "role": "system",
-                "content": "Combine these answers into a final, concise response.",
+                "content": "Combine these answers into a final response.",
             },
             {
                 "role": "user",
@@ -510,6 +510,7 @@ def write_notes():
 @login_required
 def upload_pdf():
     if request.method == "POST":
+        global vector_store
         if "pdfFile" not in request.files:
             return jsonify({"success": False, "message": "No file part"}), 400
 
@@ -519,20 +520,50 @@ def upload_pdf():
             return jsonify({"success": False, "message": "No selected file"}), 400
 
         if file and file.filename.endswith(".pdf"):
+            # Generate paths for both the PDF file and its corresponding .pkl file
             file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+            vector_store_filename = os.path.splitext(file.filename)[0] + ".pkl"
+            vector_store_path = os.path.join(app.config["UPLOAD_FOLDER"], vector_store_filename)
+
+            # Check if the .pkl file already exists
+            if os.path.exists(vector_store_path):
+                try:
+                    # Load the vector store from disk if the file exists
+                    with open(vector_store_path, 'rb') as f:
+                        vector_store = pickle.load(f)
+                    return jsonify(
+                        {
+                            "success": True,
+                            "message": "Vector store loaded from previous upload!",
+                            "file_url": f"/uploads/{file.filename}",
+                            "vector_store_file": vector_store_filename,  # Provide the saved vector store filename
+                        }
+                    )
+                except Exception as e:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "message": f"Error loading vector store: {str(e)}",
+                            }
+                        ),
+                        500,
+                    )
+
+            # If the .pkl file doesn't exist, process the PDF and save the vector store
             file.save(file_path)  # Save the file to the server
 
             # Extract text from the PDF
             text = extract_text_from_pdf(file_path)
             session["documents"] = [text]  # Store text in session
             
-            # Initialize vector store with the new PDF
+            vector_store.clear()  # Clear the vector store for the new PDF
+            
             try:
-                
                 # Save documents to vector store
                 vector_store.save("documents", text)
 
-                # Optionally, pre-compute and save chunks, elements, summaries, etc.
+                # Pre-compute and save chunks, elements, summaries, etc.
                 chunks = split_documents_into_chunks([text])
                 vector_store.save("chunks", chunks)
 
@@ -550,12 +581,21 @@ def upload_pdf():
 
                 community_summaries = summarize_communities(communities, graph)
                 vector_store.save("community_summaries", community_summaries)
+
+                summaries_embeddings = model.encode(community_summaries)
+                vector_store.save('summaries_embeddings', summaries_embeddings)
+
+                # Save vector store to disk in Pickle format
+                with open(vector_store_path, 'wb') as f:
+                    pickle.dump(vector_store, f)
+
                 return jsonify(
                     {
                         "success": True,
                         "message": "Upload successful!",
                         "file_url": f"/uploads/{file.filename}",
                         "extracted_text": text,
+                        "vector_store_file": vector_store_filename,  # Provide the saved vector store filename
                     }
                 )
             except Exception as e:
@@ -570,6 +610,7 @@ def upload_pdf():
                 )
         else:
             return jsonify({"success": False, "message": "Invalid file type"}), 400
+
     elif request.method == "GET":
         return render_template("upload.html", text=None)
 
@@ -663,8 +704,10 @@ def rag_query():
         graph = vector_store.load('graph') or build_graph_from_summaries(summaries)
         communities = vector_store.load('communities') or detect_communities(graph)
         community_summaries = vector_store.load('community_summaries') or summarize_communities(communities, graph)
-        
-        response = generate_answers_from_communities(community_summaries, query)
+        summaries_embeddings = vector_store.load('summaries_embeddings')
+        if summaries_embeddings is None:
+            summaries_embeddings = model.encode(community_summaries)
+        response = generate_answers_from_communities(summaries_embeddings,community_summaries, query)
         
         return jsonify({"answer": response}), 200
 
