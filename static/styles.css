@@ -231,6 +231,7 @@ form .btn-primary:hover {
 .me-2 {
     margin-right: 0.5rem;
 }
+
 .pinned-section {
     background-color: #fff3cd;
     border: 1px solid #ffeeba;
@@ -241,4 +242,35 @@ form .btn-primary:hover {
 .papers-section {
     border-radius: 8px;
     padding: 15px;
+}
+
+/* Back to Top Button Styles */
+.back-to-top-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background-color: #0d6efd;
+    color: #ffffff;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    font-size: 1.5rem;
+    text-align: center;
+    line-height: 50px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.back-to-top-btn.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.back-to-top-btn:hover {
+    background-color: #0a58ca;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }

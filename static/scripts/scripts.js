@@ -19,7 +19,24 @@ document.addEventListener('DOMContentLoaded', function () {
             contextMenu.style.display = 'none';
         }
     });
+    // Get the button element
+    const backToTopButton = document.getElementById('back-to-top');
+    // Show or hide the button based on scroll position
+    window.addEventListener('scroll', function () {
+        if (window.scrollY > 200) { // Show button after scrolling 200px
+            backToTopButton.classList.add('show');
+        } else {
+            backToTopButton.classList.remove('show');
+        }
+    });
 
+    // Smooth scroll to the top when the button is clicked
+    backToTopButton.addEventListener('click', function () {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
     // Handle Enter key press in the custom question textarea
     document.getElementById('custom-question').addEventListener('keydown', function (event) {
         if (event.key === 'Enter' && !event.shiftKey) { // Prevent newline
