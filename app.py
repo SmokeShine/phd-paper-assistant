@@ -52,23 +52,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 vector_store = None
 Session(app)
 
-# Use a more suitable model for scientific papers
-def build_knowledge_graph(chunks):
-    G = nx.Graph()
-    model = SentenceTransformer(MODEL_NAME)
 
-    for i, chunk in enumerate(chunks):
-        G.add_node(i, content=chunk)
-
-        # Create edges based on semantic similarity
-        if i > 0:
-            for j in range(i):
-                embeddings = model.encode([chunks[i], chunks[j]])
-                similarity = np.dot(embeddings[0], embeddings[1]) / (np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1]))
-                if similarity > 0.5:  # Threshold for edge creation
-                    G.add_edge(i, j, weight=similarity)
-
-    return G
 
 def hierarchical_clustering(graph):
     ig_graph = ig.Graph.from_networkx(graph)
@@ -76,104 +60,131 @@ def hierarchical_clustering(graph):
     communities = [frozenset(community) for community in partition]
     return communities
 
-def summarize_communities(communities, graph):
-    summaries = {}
-    for i, community in enumerate(communities):
-        subgraph = graph.subgraph(community)
-        summary = generate_community_summary(subgraph)
-        summaries[f"community_{i}"] = summary
+
+def split_documents_into_chunks(documents, chunk_size=600, overlap_size=100):
+    chunks = []
+    for document in documents:
+        for i in range(0, len(document), chunk_size - overlap_size):
+            chunk = document[i:i + chunk_size]
+            chunks.append(chunk)
+    return chunks
+def extract_elements_from_chunks(chunks):
+    elements = []
+    for index, chunk in enumerate(chunks):
+        response = ollama.chat(
+            model="llama3.1",
+            messages=[
+                {"role": "system", "content": "Extract entities and relationships from the following text."},
+                {"role": "user", "content": chunk}
+            ]
+        )
+        
+        entities_and_relations = response["message"]['content']
+        elements.append(entities_and_relations)
+    return elements
+
+def summarize_elements(elements):
+    summaries = []
+    for index, element in enumerate(elements):
+        response = ollama.chat(
+            model="llama3.1",
+            messages=[
+                {"role": "system", "content": "Summarize the following entities and relationships in a structured format. Use \"->\" to represent relationships, after the \"Relationships:\" word."},
+                {"role": "user", "content": element}
+            ]
+        )
+        summary = response["message"]['content']
+        summaries.append(summary)
     return summaries
 
-def generate_community_summary(subgraph):
-    content = " ".join([subgraph.nodes[node]['content'] for node in subgraph.nodes])
-    prompt = f"Summarize the following content in 2-3 sentences:\n\n{content}"
-    response = ollama.generate(model="llama3.1", prompt=prompt)
-    return response['response']
+def build_graph_from_summaries(summaries):
+    G = nx.Graph()
+    for index, summary in enumerate(summaries):
+        lines = summary.split("\n")
+        entities_section = False
+        relationships_section = False
+        entities = []
+        for line in lines:
+            if line.startswith("### Entities:") or line.startswith("**Entities:**"):
+                entities_section = True
+                relationships_section = False
+                continue
+            elif line.startswith("### Relationships:") or line.startswith("**Relationships:**"):
+                entities_section = False
+                relationships_section = True
+                continue
+            if entities_section and line.strip():
+                if line[0].isdigit() and line[1] == ".":
+                    line = line.split(".", 1)[1].strip()
+                entity = line.strip()
+                entity = entity.replace("**", "")
+                entities.append(entity)
+                G.add_node(entity)
+            elif relationships_section and line.strip():
+                parts = line.split("->")
+                if len(parts) >= 2:
+                    source = parts[0].strip()
+                    target = parts[-1].strip()
+                    relation = " -> ".join(parts[1:-1]).strip()
+                    G.add_edge(source, target, label=relation)
+    return G
 
-def create_embeddings(chunks):
-    model = SentenceTransformer(MODEL_NAME)
-    return model.encode(chunks), model
+def detect_communities(graph):
+    node_to_index = {node: i for i, node in enumerate(graph.nodes())}
+    index_to_node = {i: node for node, i in node_to_index.items()}
+    ig_graph = ig.Graph.from_networkx(graph)
+    partition = leidenalg.find_partition(ig_graph, leidenalg.ModularityVertexPartition)
+    communities = []
+    for community in partition:
+        communities.append([index_to_node[idx] for idx in community])
 
-def build_faiss_index(embeddings):
-    dimension = embeddings.shape[1]
-    index = faiss.IndexFlatL2(dimension)
-    index.add(embeddings)
-    return index
+    return communities
 
-def process_query(query, graph, summaries, index, chunks, embedding_model):
-    query_embedding = embedding_model.encode([query])
-    _, indices = index.search(query_embedding, k=5)
-    relevant_chunks = [chunks[i] for i in indices[0]]
+def summarize_communities(communities, graph):
+    community_summaries = []
     
-    # Use relevant chunks, graph information, and community summaries to generate a response
-    response = generate_response_with_ollama(query, relevant_chunks, graph, summaries)
-    return response
+    for index, community in enumerate(communities):
+        subgraph = graph.subgraph(set(community))
+        nodes = list(subgraph.nodes)
+        edges = list(subgraph.edges(data=True))
+        description = "Entities: " + ", ".join(nodes) + "\nRelationships: "
+        relationships = []
+        for edge in edges:
+            relationships.append(f"{edge[0]} -> {edge[2]['label']} -> {edge[1]}")
+        description += ", ".join(relationships)
 
-def generate_response_with_ollama(query, relevant_chunks, graph, summaries):
-    context = "\n".join(relevant_chunks)
-    graph_info = f"Graph with {len(graph.nodes())} nodes and {len(graph.edges())} edges"
-    summary_info = "\n".join([f"{k}: {v}" for k, v in summaries.items()])
+        response = ollama.chat(
+            model="llama3.1",
+            messages=[
+                {"role": "system", "content": "Summarize the following community of entities and relationships."},
+                {"role": "user", "content": description}
+            ]
+        )
+        summary = response["message"]['content']
+        community_summaries.append(summary)
+    return community_summaries
 
-    prompt = f"""
-    Query: {query}
-    Context: {context}
-    Graph Information: {graph_info}
-    Community Summaries: {summary_info}
+def generate_answers_from_communities(community_summaries, query):
+    intermediate_answers = []
+    for index, summary in enumerate(community_summaries):
+        response = ollama.chat(
+            model="llama3.1",
+            messages=[
+                {"role": "system", "content": "Answer the following query based on the provided summary."},
+                {"role": "user", "content": f"Query: {query} Summary: {summary}"}
+            ]
+        )
+        intermediate_answers.append(response["message"]['content'])
 
-    Based on the above information, provide a comprehensive answer to the query.
-    """
-    
-    response = ollama.generate(model="llama3.1", prompt=prompt)
-    return response['response']
-
-def initialize_vector_store(pdf_filename):
-    global vector_store
-
-    file_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
-
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"The file {file_path} does not exist.")
-
-    # Extract text from the uploaded PDF
-    loader = PyMuPDFLoader(file_path)
-    data = loader.load()
-    text = ""
-
-    # Extract content from the first four pages
-    for i, page in enumerate(data):
-        text += page.page_content
-
-    # Remove the "Literature Review" section
-    cleaned_text = remove_section_from_text(text, "Literature Review")
-
-    # Remove the references and in-text citations
-    cleaned_text = remove_references_from_text(cleaned_text)
-
-    if not cleaned_text:
-        raise ValueError("No text extracted from the PDF.")
-
-    chunks = cleaned_text.split("\n\n")  # Split cleaned text into chunks
-    vector_store = {"chunks": chunks}
-
-    # Build knowledge graph from chunks
-    graph = build_knowledge_graph(chunks)
-    communities = hierarchical_clustering(graph)
-    summaries = summarize_communities(communities, graph)
-
-    # Create embeddings for chunks and build FAISS index
-    embeddings, embedding_model = create_embeddings(chunks)
-    index = build_faiss_index(embeddings)
-
-    # Store all necessary components in the vector store
-    vector_store.update({
-        "graph": graph,
-        "summaries": summaries,
-        "index": index,
-        "embedding_model": embedding_model
-    })
-
-
-
+    final_response = ollama.chat(
+        model="llama3.1",
+        messages=[
+            {"role": "system", "content": "Combine these answers into a final, concise response."},
+            {"role": "user", "content": f"Intermediate answers: {intermediate_answers}"}
+        ]
+    )
+    final_answer = final_response["message"]['content']
+    return final_answer
 
 @app.after_request
 def after_request(response):
@@ -488,10 +499,10 @@ def upload_pdf():
 
             # Extract text from the PDF
             text = extract_text_from_pdf(file_path)
+            session['documents'] = [text]  # Store text in session
 
             # Initialize vector store with the new PDF
             try:
-                initialize_vector_store(file.filename)
                 return jsonify(
                     {
                         "success": True,
@@ -592,19 +603,17 @@ def rag():
     if not query:
         return jsonify({"error": "Query parameter is required"}), 400
 
-    if vector_store is None:
-        return jsonify({"error": "Vector store is not initialized"}), 500
-
-    # Retrieve components from the vector store
-    graph = vector_store["graph"]
-    summaries = vector_store["summaries"]
-    index = vector_store["index"]
-    embedding_model = vector_store["embedding_model"]
-    chunks = vector_store["chunks"]
-
+    documents = session.get('documents', [])
+    
     try:
-        # Process the query using the GraphRAG-inspired method
-        response = process_query(query, graph, summaries, index, chunks, embedding_model)
+        chunks = split_documents_into_chunks(documents)
+        elements = extract_elements_from_chunks(chunks)
+        summaries = summarize_elements(elements)
+        graph = build_graph_from_summaries(summaries)
+        
+        communities = detect_communities(graph)
+        community_summaries = summarize_communities(communities, graph)
+        response  = generate_answers_from_communities(community_summaries, query)
         
         return jsonify({"answer": response}), 200
     except Exception as e:
@@ -673,3 +682,13 @@ def unpin_paper(paper_id):
         flash("Paper not found.")
 
     return redirect(url_for("index"))
+
+@app.route("/get_uploaded_pdfs", methods=["GET"])
+@login_required
+def get_uploaded_pdfs():
+    try:
+        # Retrieve list of uploaded PDFs from session or storage
+        uploaded_pdfs = [{'name': filename} for filename in os.listdir(app.config["upload_files"]) if filename.endswith('.pdf')]
+        return jsonify({"pdfs": uploaded_pdfs}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

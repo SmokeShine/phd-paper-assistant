@@ -279,7 +279,7 @@ def extract_text_from_pdf(pdf_path):
     conversation_history = [
         {
             "role": "system",
-            "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning. You need to explain the novelty in this paper.",
+            "content": "Use a formal tone and do not introduce yourself. Don't ask any questions at the end. You are a PhD Student in Deep Learning.",
         },
         {"role": "user", "content": cleaned_text},
     ]
