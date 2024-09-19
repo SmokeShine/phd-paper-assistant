@@ -111,7 +111,7 @@ def lookup_titles():
                 for index, row in db_not_in_cache.iterrows():
                     new_paper = row.to_dict()
                     new_paper["pinned"] = 1
-                    cached_papers = cached_papers.append(new_paper, ignore_index=True)
+                    cached_papers = pd.concat([cached_papers,pd.DataFrame([new_paper])], ignore_index=True)
 
             # Condition 2: Update cache if a paper is pinned in cache but not in DB
             cache_not_in_db = cached_pinned[~cached_pinned["title"].isin(pinned_papers_db["title"])]
