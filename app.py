@@ -76,7 +76,7 @@ def extract_elements_from_chunks(chunks):
     elements = []
     for index, chunk in enumerate(chunks):
         response = ollama.chat(
-            model="llama3.1",
+            model="llama3.2",
             messages=[
                 {
                     "role": "system",
@@ -95,7 +95,7 @@ def summarize_elements(elements):
     summaries = []
     for index, element in enumerate(elements):
         response = ollama.chat(
-            model="llama3.1",
+            model="llama3.2",
             messages=[
                 {
                     "role": "system",
@@ -170,7 +170,7 @@ def summarize_communities(communities, graph):
         description += ", ".join(relationships)
 
         response = ollama.chat(
-            model="llama3.1",
+            model="llama3.2",
             messages=[
                 {
                     "role": "system",
@@ -195,7 +195,7 @@ def generate_answers_from_communities(summaries_embeddings,community_summaries, 
     closest_summary = community_summaries[closest_index]
 
     final_response = ollama.chat(
-        model="llama3.1",
+        model="llama3.2",
         messages=[
             {
                 "role": "system",
@@ -376,13 +376,13 @@ def register():
         return render_template("register.html")
 
 
-conversation_history = []
+
 
 
 @app.route("/eli5", methods=["POST"])
 def eli5():
-    global conversation_history
-
+    # global conversation_history
+    conversation_history = []
     data = request.json
     selected_text = data.get("text", "")
     system_message = "Use a formal tone and do not introduce yourself. You are a PhD Student in Deep Learning. Your explanations can contain technical jargon to make the concepts clear."
@@ -397,7 +397,7 @@ def eli5():
 
         try:
             # Get the response from the model
-            response = ollama.chat(model="llama3.1", messages=conversation_history)
+            response = ollama.chat(model="llama3.2", messages=conversation_history)
 
             # Extract the response content
             explanation = response.get("message", {}).get("content", "").strip()

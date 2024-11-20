@@ -27,7 +27,7 @@ db = SQL("sqlite:///finance.db")
 # Initialize disk cache
 cache = dc.Cache("cache_directory")  # Specify a directory for cache storage
 
-CACHE_EXPIRATION_DAYS = 7  # Cache expiration period
+CACHE_EXPIRATION_DAYS = 1  # Cache expiration period
 CACHE_KEY_DATA = "lookup_titles_data"
 CACHE_KEY_TIMESTAMP = "lookup_titles_timestamp"
 
@@ -294,7 +294,7 @@ def generate_response_with_ollama(relevant_chunks, query):
     ]
 
     response = ollama.chat(
-        model="llama3.1",
+        model="llama3.2",
         messages=conversation_history,
         options=ollama.Options(context_length=8096),
     )
