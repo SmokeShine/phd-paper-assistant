@@ -6,57 +6,222 @@ Hugging Face Daily Papers
 {% block main %}
 <div class="container py-5">
     <div class="row">
-        {% if papers_data %}
-        {% for paper in papers_data %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <h5 class="card-title">{{ paper.title }}</h5>
-                    <p class="card-text text-muted">
-                        Submitted by: {{ paper.submitted_by }}
-                    </p>
-                    <p class="card-text">
-                        {{ paper.summary|safe }}
-                    </p>
-                    <!-- Google search link for the paper title -->
-                    <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
-                        class="btn btn-outline-primary" target="_blank" 
-                        aria-label="Search for {{ paper.title }} on Google">
-                        Read Full Paper
-                    </a>
-                </div>
-                <div class="card-footer text-muted d-flex justify-content-between align-items-center">
-                    <span>Published: {{ paper.published }}</span>
-                    <span>Upvotes: {{ paper.upvotes }}</span>
+        <!-- Tab navigation -->
+        <nav class="nav nav-tabs mb-4">
+            <div class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#hugging-face-tab">Hugging Face Papers</a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#iclr-tab">ICLR Papers</a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#neurips-tab">NeurIPS Papers</a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#icml-tab">ICML Papers</a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#cvpr-tab">CVPR Papers</a>
+            </div>
+        </nav>
 
-                    <!-- Pin/Unpin Button -->
-                    <form
-                        action="{% if paper.pinned %}{{ url_for('unpin_paper', paper_id=paper.title) }}{% else %}{{ url_for('pin_paper') }}{% endif %}"
-                        method="POST">
-                        <input type="hidden" name="paper_id" value="{{ paper.title }}">
-                        <input type="hidden" name="published" value="{{ paper.published }}">
-                        <input type="hidden" name="submitted_by" value="{{ paper.submitted_by }}">
-                        <input type="hidden" name="summary" value="{{ paper.summary }}">
-                        <input type="hidden" name="upvotes" value="{{ paper.upvotes }}">
-                        {% if paper.pinned %}
-                        <button type="submit" class="btn btn-warning btn-sm" aria-label="Unpin {{ paper.title }}">
-                            Unpin
-                        </button>
+        <!-- Tab content -->
+        <div class="tab-content">
+            <!-- Hugging Face Papers tab -->
+            <div class="tab-pane fade show active" id="hugging-face-tab">
+                <div class="container">
+                    <div class="row">
+                        {% if papers_data %}
+                        {% for paper in papers_data %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ paper.title }}</h5>
+                                    <p class="card-text text-muted">
+                                        Submitted by: {{ paper.submitted_by }}
+                                    </p>
+                                    <p class="card-text">
+                                        {{ paper.summary|safe }}
+                                    </p>
+                                    <!-- Google search link for the paper title -->
+                                    <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
+                                        class="btn btn-outline-primary" target="_blank" 
+                                        aria-label="Search for {{ paper.title }} on Google">
+                                        Read Full Paper
+                                    </a>
+                                </div>
+                                <div class="card-footer text-muted d-flex justify-content-between align-items-center">
+                                    <span>Published: {{ paper.published }}</span>
+                                    <span>Upvotes: {{ paper.upvotes }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
                         {% else %}
-                        <button type="submit" class="btn btn-success btn-sm" aria-label="Pin {{ paper.title }}">
-                            Pin
-                        </button>
+                        <div class="alert alert-info text-center" role="alert">
+                            No papers found for today.
+                        </div>
                         {% endif %}
-                    </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ICLR Papers tab -->
+            <div class="tab-pane fade" id="iclr-tab">
+                <div class="container">
+                    <div class="row">
+                        {% if iclr_papers %}
+                        {% for paper in iclr_papers %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ paper.title }}</h5>
+                                    <p class="card-text text-muted">
+                                        Authors: {{ paper.author }}
+                                    </p>
+                                    <p class="card-text">
+                                        Track: {{ paper.track }} | Status: {{ paper.status }} | Year: {{ paper.year }}
+                                    </p>
+                                    <!-- Google search link for the paper title -->
+                                    <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
+                                        class="btn btn-outline-primary" target="_blank" 
+                                        aria-label="Search for {{ paper.title }} on Google">
+                                        Read Full Paper
+                                    </a>
+                                </div>
+                                <div class="card-footer text-muted d-flex justify-content-between align-items-center">
+                                    <span>Keywords: {{ paper.keywords }}</span>
+                                    <span>Rating: {{ paper.rating_avg }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-info text-center" role="alert">
+                            No ICLR papers found or unable to fetch data.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- NeurIPS Papers tab -->
+            <div class="tab-pane fade" id="neurips-tab">
+                <div class="container">
+                    <div class="row">
+                        {% if neurips_papers %}
+                        {% for paper in neurips_papers %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ paper.title }}</h5>
+                                    <p class="card-text text-muted">
+                                        Authors: {{ paper.author }}
+                                    </p>
+                                    <p class="card-text">
+                                        Track: {{ paper.track }} | Status: {{ paper.status }} | Year: {{ paper.year }}
+                                    </p>
+                                    <!-- Google search link for the paper title -->
+                                    <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
+                                        class="btn btn-outline-primary" target="_blank" 
+                                        aria-label="Search for {{ paper.title }} on Google">
+                                        Read Full Paper
+                                    </a>
+                                </div>
+                                <div class="card-footer text-muted d-flex justify-content-between align-items-center">
+                                    <span>Keywords: {{ paper.keywords }}</span>
+                                    <span>Rating: {{ paper.rating_avg }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-info text-center" role="alert">
+                            No NeurIPS papers found or unable to fetch data.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ICML Papers tab -->
+            <div class="tab-pane fade" id="icml-tab">
+                <div class="container">
+                    <div class="row">
+                        {% if icml_papers %}
+                        {% for paper in icml_papers %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ paper.title }}</h5>
+                                    <p class="card-text text-muted">
+                                        Authors: {{ paper.author }}
+                                    </p>
+                                    <p class="card-text">
+                                        Track: {{ paper.track }} | Status: {{ paper.status }} | Year: {{ paper.year }}
+                                    </p>
+                                    <!-- Google search link for the paper title -->
+                                    <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
+                                        class="btn btn-outline-primary" target="_blank" 
+                                        aria-label="Search for {{ paper.title }} on Google">
+                                        Read Full Paper
+                                    </a>
+                                </div>
+                                <div class="card-footer text-muted d-flex justify-content-between align-items-center">
+                                    <span>Keywords: {{ paper.keywords }}</span>
+                                    <span>Rating: {{ paper.rating_avg }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-info text-center" role="alert">
+                            No ICML papers found or unable to fetch data.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- CVPR Papers tab -->
+            <div class="tab-pane fade" id="cvpr-tab">
+                <div class="container">
+                    <div class="row">
+                        {% if cvpr_papers %}
+                        {% for paper in cvpr_papers %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ paper.title }}</h5>
+                                    <p class="card-text text-muted">
+                                        Authors: {{ paper.author }}
+                                    </p>
+                                    <p class="card-text">
+                                        Track: {{ paper.track }} | Status: {{ paper.status }} | Year: {{ paper.year }}
+                                    </p>
+                                    <!-- Google search link for the paper title -->
+                                    <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
+                                        class="btn btn-outline-primary" target="_blank" 
+                                        aria-label="Search for {{ paper.title }} on Google">
+                                        Read Full Paper
+                                    </a>
+                                </div>
+                                <div class="card-footer text-muted d-flex justify-content-between align-items-center">
+                                    <span>Keywords: {{ paper.keywords }}</span>
+                                    <span>Rating: {{ paper.rating_avg }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-info text-center" role="alert">
+                            No CVPR papers found or unable to fetch data.
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
-        {% endfor %}
-        {% else %}
-        <div class="alert alert-info text-center" role="alert">
-            No papers found for today.
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

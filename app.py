@@ -18,6 +18,7 @@ from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from helpers import (
     apology,
+    load_conference_papers,
     login_required,
     lookup_titles,
     extract_text_from_pdf,
@@ -227,8 +228,19 @@ def index():
     papers_data = lookup_titles()
     if len(papers_data) == 0:
         return apology("No Data", 200)
-    return render_template("index.html", papers_data=papers_data), 200
+    # Get ICLR papers
+    iclr_papers = load_conference_papers("iclr")
+    neurips_papers = load_conference_papers("nips")
+    icml_papers = load_conference_papers("icml")
+    cvpr_papers = load_conference_papers("cvpr")
 
+    return render_template("index.html",
+                         papers_data=papers_data,
+                         iclr_papers=iclr_papers,
+                         neurips_papers=neurips_papers,
+                         icml_papers=icml_papers,
+                         cvpr_papers=cvpr_papers), 200
+    
 
 @app.route("/history")
 @login_required

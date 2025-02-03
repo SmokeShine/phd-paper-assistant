@@ -21,6 +21,83 @@ import ollama
 from cs50 import SQL
 import diskcache as dc  # Adding diskcache for caching
 
+CACHE_DIR = "conference_cache"
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+def load_from_cache(file_path):
+    """Load data from cache if it exists."""
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
+    return None
+
+def save_to_cache(file_path, data):
+    """Save data to cache (disk)."""
+    with open(file_path, "wb") as f:
+        pickle.dump(data, f)
+
+def fetch_json_from_url(url, cache_file_path):
+    """Fetch JSON data from URL or cache."""
+    cached_data = load_from_cache(cache_file_path)
+    if cached_data is not None:
+        return cached_data
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        save_to_cache(cache_file_path, data)  # Save fetched data to disk cache
+        return data
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching {url}: {e}")
+        return None
+def load_conference_papers(conference_name):
+    """
+    Loads papers from a conference's GitHub repository.
+    Returns a list of paper dictionaries.
+    """
+    api_url = f"https://api.github.com/repos/papercopilot/paperlists/contents/{conference_name}"
+    raw_url = f"https://raw.githubusercontent.com/papercopilot/paperlists/main/{conference_name}/"
+
+    try:
+        # Cache the file list (list of .json files)
+        file_list_cache_path = os.path.join(CACHE_DIR, f"{conference_name}_file_list.pkl")
+        file_list = fetch_json_from_url(api_url, file_list_cache_path)
+        if not file_list:
+            return []
+
+        files = [file["name"] for file in file_list if file["name"].endswith(".json")]
+
+        papers = []
+        for file in files:
+            file_url = f"{raw_url}{file}"
+            file_cache_path = os.path.join(CACHE_DIR, f"{conference_name}_{file}.pkl")
+            data = fetch_json_from_url(file_url, file_cache_path)
+
+            if not data:
+                continue  # Skip if failed to fetch
+
+            # Extract year from filename (assuming format "confYEAR.json")
+            year_str = "".join(filter(str.isdigit, file))
+            year = int(year_str) if year_str.isdigit() else None
+            if year <= 2022:
+                continue
+            # Filter out papers with "Reject" or "Withdraw" status
+            accepted_papers = [
+                {**paper, "year": year}
+                for paper in data
+                if paper.get("status") not in {"Reject", "Withdraw"}
+            ]
+            papers.extend(accepted_papers)
+
+        return papers
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching {conference_name} papers: {e}")
+        return []
+
+
+
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
 
