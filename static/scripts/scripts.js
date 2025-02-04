@@ -61,46 +61,62 @@ document.addEventListener('DOMContentLoaded', function () {
         const historyContainer = document.getElementById('askollama-history');
         const loadingMessage = document.getElementById('loading-message');
         let question;
-
+    
         if (customQuestion) {
             question = `${customQuestion}: ${storedSelectedText}`;
         } else if (storedSelectedText) {
             question = `Explain: ${storedSelectedText}`;
         }
-
+    
         if (question) {
             loadingMessage.style.display = 'block';
-
+    
             fetch('/eli5', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: question })
             })
-                .then(response => response.json())
-                .then(data => {
-                    loadingMessage.style.display = 'none';
-
-                    // Create new Q&A entry
-                    const newEntry = document.createElement('div');
-                    newEntry.className = 'ollama-history-entry mt-3 p-2 border rounded';
-                    newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> ${data.explanation}`;
-
-                    // Append new entry to the history container
-                    historyContainer.appendChild(newEntry);
-
-                    // Scroll to the newly added entry
-                    newEntry.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-                    // Clear input and reset stored text
-                    document.getElementById('custom-question').value = '';
-                    storedSelectedText = '';
-                })
-                .catch(error => {
-                    loadingMessage.style.display = 'none';
-                    console.error('Error:', error);
-                });
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.body.getReader();
+            })
+            .then(reader => {
+                loadingMessage.style.display = 'none';
+    
+                // Create a new Q&A entry
+                const newEntry = document.createElement('div');
+                newEntry.className = 'ollama-history-entry mt-3 p-2 border rounded';
+                newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> <span id="answer-text"></span>`;
+                historyContainer.appendChild(newEntry);
+                newEntry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+                const answerText = newEntry.querySelector('#answer-text');
+                const decoder = new TextDecoder();
+                let accumulatedText = '';
+    
+                function readStream() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) return;
+                        const chunk = decoder.decode(value, { stream: true });
+    
+                        // Append text with proper spacing
+                        accumulatedText += chunk + ' ';
+    
+                        // Format new lines for better readability
+                        answerText.innerHTML = accumulatedText
+                            .replace(/\n\n/g, '<p></p>')  // Paragraphs for double new lines
+                            .replace(/\n/g, ' ');         // Prevent column-like structure
+    
+                        readStream();
+                    });
+                }
+    
+                readStream();
+            })
+            .catch(error => {
+                loadingMessage.style.display = 'none';
+                console.error('Error:', error);
+            });
         }
     }
 

@@ -45,7 +45,7 @@ Hugging Face Daily Papers
                                     </p>
                                     <!-- Google search link for the paper title -->
                                     <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
-                                        class="btn btn-outline-primary" target="_blank" 
+                                        class="btn btn-outline-primary" target="_blank"
                                         aria-label="Search for {{ paper.title }} on Google">
                                         Read Full Paper
                                     </a>
@@ -53,6 +53,23 @@ Hugging Face Daily Papers
                                 <div class="card-footer text-muted d-flex justify-content-between align-items-center">
                                     <span>Published: {{ paper.published }}</span>
                                     <span>Upvotes: {{ paper.upvotes }}</span>
+                                    <!-- Pin/Unpin Button -->
+                                    {% if is_hugging_face %}
+                                    <form
+                                        action="{% if paper.pinned %}{{ url_for('unpin_paper', paper_id=paper.title) }}{% else %}{{ url_for('pin_paper') }}{% endif %}"
+                                        method="POST">
+                                        <input type="hidden" name="paper_id" value="{{ paper.title }}">
+                                        <input type="hidden" name="published" value="{{ paper.published }}">
+                                        <input type="hidden" name="submitted_by" value="{{ paper.submitted_by }}">
+                                        <input type="hidden" name="summary" value="{{ paper.summary }}">
+                                        <input type="hidden" name="upvotes" value="{{ paper.upvotes }}">
+                                        {% if paper.pinned %}
+                                        <button type="submit" class="btn btn-warning btn-sm">Unpin</button>
+                                        {% else %}
+                                        <button type="submit" class="btn btn-success btn-sm">Pin</button>
+                                        {% endif %}
+                                    </form>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -84,7 +101,7 @@ Hugging Face Daily Papers
                                     </p>
                                     <!-- Google search link for the paper title -->
                                     <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
-                                        class="btn btn-outline-primary" target="_blank" 
+                                        class="btn btn-outline-primary" target="_blank"
                                         aria-label="Search for {{ paper.title }} on Google">
                                         Read Full Paper
                                     </a>
@@ -123,7 +140,7 @@ Hugging Face Daily Papers
                                     </p>
                                     <!-- Google search link for the paper title -->
                                     <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
-                                        class="btn btn-outline-primary" target="_blank" 
+                                        class="btn btn-outline-primary" target="_blank"
                                         aria-label="Search for {{ paper.title }} on Google">
                                         Read Full Paper
                                     </a>
@@ -162,7 +179,7 @@ Hugging Face Daily Papers
                                     </p>
                                     <!-- Google search link for the paper title -->
                                     <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
-                                        class="btn btn-outline-primary" target="_blank" 
+                                        class="btn btn-outline-primary" target="_blank"
                                         aria-label="Search for {{ paper.title }} on Google">
                                         Read Full Paper
                                     </a>
@@ -201,7 +218,7 @@ Hugging Face Daily Papers
                                     </p>
                                     <!-- Google search link for the paper title -->
                                     <a href="https://www.google.com/search?q={{ paper.title | urlencode }}"
-                                        class="btn btn-outline-primary" target="_blank" 
+                                        class="btn btn-outline-primary" target="_blank"
                                         aria-label="Search for {{ paper.title }} on Google">
                                         Read Full Paper
                                     </a>

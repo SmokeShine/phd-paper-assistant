@@ -13,6 +13,7 @@ from flask import (
     jsonify,
     send_from_directory,
     url_for,
+    Response
 )
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -239,7 +240,7 @@ def index():
                          iclr_papers=iclr_papers,
                          neurips_papers=neurips_papers,
                          icml_papers=icml_papers,
-                         cvpr_papers=cvpr_papers), 200
+                         cvpr_papers=cvpr_papers,is_hugging_face=True), 200
     
 
 @app.route("/history")
@@ -393,37 +394,31 @@ def register():
 
 @app.route("/eli5", methods=["POST"])
 def eli5():
-    # global conversation_history
     conversation_history = []
     data = request.json
     selected_text = data.get("text", "")
     system_message = "Use a formal tone and do not introduce yourself. You are a PhD Student in Deep Learning. Your explanations can contain technical jargon to make the concepts clear."
 
     if selected_text:
-        # Initialize conversation history if it's the start of a new session
         if not conversation_history:
             conversation_history.append({"role": "system", "content": system_message})
 
-        # Add the user's message to the history
         conversation_history.append({"role": "user", "content": selected_text})
 
-        try:
-            # Get the response from the model
-            response = ollama.chat(model="llama3.2", messages=conversation_history)
+        def generate_response():
+            try:
+                response_stream = ollama.chat(model="llama3.2", messages=conversation_history, stream=True)
+                for chunk in response_stream:
+                    content = chunk.get("message", {}).get("content", "").strip()
+                    if content:
+                        yield content + "\n"
 
-            # Extract the response content
-            explanation = response.get("message", {}).get("content", "").strip()
+            except Exception as e:
+                yield f"Error: {str(e)}\n"
 
-            # Add the assistant's response to the conversation history
-            conversation_history.append({"role": "assistant", "content": explanation})
+        return Response(generate_response(), content_type="text/event-stream")
 
-            return jsonify({"explanation": explanation})
-
-        except Exception as e:
-            # Handle any errors from the model or request
-            return jsonify({"error": str(e)}), 500
-
-    return jsonify({"explanation": "No text provided"}), 400
+    return jsonify({"error": "No text provided"}), 400
 
 
 @app.route("/save_markdown", methods=["POST"])
