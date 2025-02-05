@@ -54,6 +54,56 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('clear-ollama-content').addEventListener('click', function () {
         clearOllamaContent();
     });
+    // Function to filter out papers
+    // Get all paper cards
+    const paperCards = document.querySelectorAll('.card');
+
+    // Function to filter papers
+    function debounce(func, delay) {
+        let timer;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+    
+    function filterPapers(query) {
+        query = query.toLowerCase();
+        
+        let visibleCards = 0;
+        const paperContainer = document.querySelector(".row"); // Adjust if necessary
+        const paperCards = document.querySelectorAll(".col-md-6.col-lg-4"); // Select cards
+    
+        paperCards.forEach(card => {
+            const title = card.querySelector('.card-title')?.textContent.toLowerCase() || "";
+            const tags = card.querySelector('.card-footer')?.textContent.toLowerCase() || "";
+            
+            const shouldShow = title.includes(query) || tags.includes(query);
+    
+            if (shouldShow) {
+                card.classList.remove("d-none"); // Bootstrap class for proper hiding
+                visibleCards++;
+            } else {
+                card.classList.add("d-none");
+            }
+        });
+    
+        // If no cards match, show the alert message
+        const noResultsAlert = document.querySelector(".alert-info");
+        if (noResultsAlert) {
+            noResultsAlert.style.display = visibleCards === 0 ? "block" : "none";
+        }
+    }
+    
+    // Add event listener with debounce for better performance
+    document.getElementById('searchInput').addEventListener('input', debounce(function (e) {
+        filterPapers(e.target.value);
+    }, 150));
+    
+    // Initial filter (show all papers)
+    filterPapers('');
+    
+
 
     // Function to handle the question submission
     function handleAskOllama() {
@@ -61,62 +111,62 @@ document.addEventListener('DOMContentLoaded', function () {
         const historyContainer = document.getElementById('askollama-history');
         const loadingMessage = document.getElementById('loading-message');
         let question;
-    
+
         if (customQuestion) {
             question = `${customQuestion}: ${storedSelectedText}`;
         } else if (storedSelectedText) {
             question = `Explain: ${storedSelectedText}`;
         }
-    
+
         if (question) {
             loadingMessage.style.display = 'block';
-    
+
             fetch('/eli5', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: question })
             })
-            .then(response => {
-                if (!response.ok) throw new Error('Network response was not ok');
-                return response.body.getReader();
-            })
-            .then(reader => {
-                loadingMessage.style.display = 'none';
-    
-                // Create a new Q&A entry
-                const newEntry = document.createElement('div');
-                newEntry.className = 'ollama-history-entry mt-3 p-2 border rounded';
-                newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> <span id="answer-text"></span>`;
-                historyContainer.appendChild(newEntry);
-                newEntry.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
-                const answerText = newEntry.querySelector('#answer-text');
-                const decoder = new TextDecoder();
-                let accumulatedText = '';
-    
-                function readStream() {
-                    reader.read().then(({ done, value }) => {
-                        if (done) return;
-                        const chunk = decoder.decode(value, { stream: true });
-    
-                        // Append text with proper spacing
-                        accumulatedText += chunk + ' ';
-    
-                        // Format new lines for better readability
-                        answerText.innerHTML = accumulatedText
-                            .replace(/\n\n/g, '<p></p>')  // Paragraphs for double new lines
-                            .replace(/\n/g, ' ');         // Prevent column-like structure
-    
-                        readStream();
-                    });
-                }
-    
-                readStream();
-            })
-            .catch(error => {
-                loadingMessage.style.display = 'none';
-                console.error('Error:', error);
-            });
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.body.getReader();
+                })
+                .then(reader => {
+                    loadingMessage.style.display = 'none';
+
+                    // Create a new Q&A entry
+                    const newEntry = document.createElement('div');
+                    newEntry.className = 'ollama-history-entry mt-3 p-2 border rounded';
+                    newEntry.innerHTML = `<strong>Q:</strong> ${question}<br><strong>A:</strong> <span id="answer-text"></span>`;
+                    historyContainer.appendChild(newEntry);
+                    newEntry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    const answerText = newEntry.querySelector('#answer-text');
+                    const decoder = new TextDecoder();
+                    let accumulatedText = '';
+
+                    function readStream() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) return;
+                            const chunk = decoder.decode(value, { stream: true });
+
+                            // Append text with proper spacing
+                            accumulatedText += chunk + ' ';
+
+                            // Format new lines for better readability
+                            answerText.innerHTML = accumulatedText
+                                .replace(/\n\n/g, '<p></p>')  // Paragraphs for double new lines
+                                .replace(/\n/g, ' ');         // Prevent column-like structure
+
+                            readStream();
+                        });
+                    }
+
+                    readStream();
+                })
+                .catch(error => {
+                    loadingMessage.style.display = 'none';
+                    console.error('Error:', error);
+                });
         }
     }
 
@@ -227,39 +277,39 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: formData,
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                status.textContent = 'File uploaded successfully!';
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    status.textContent = 'File uploaded successfully!';
 
-                // Create an iframe to render the PDF
-                const iframe = document.createElement('iframe');
-                iframe.src = data.file_url;
-                iframe.width = '100%';
-                iframe.height = '600px';
+                    // Create an iframe to render the PDF
+                    const iframe = document.createElement('iframe');
+                    iframe.src = data.file_url;
+                    iframe.width = '100%';
+                    iframe.height = '600px';
 
-                // Append iframe to a container in the DOM
-                document.getElementById('pdf-container').innerHTML = '';  // Clear previous content
-                document.getElementById('pdf-container').appendChild(iframe);
+                    // Append iframe to a container in the DOM
+                    document.getElementById('pdf-container').innerHTML = '';  // Clear previous content
+                    document.getElementById('pdf-container').appendChild(iframe);
 
-                // Update text container
-                const textContainer = document.getElementById('text-container');
-                const textElement = document.createElement('pre');
-                textElement.textContent = data.extracted_text || 'No text extracted from the PDF.';
-                textContainer.innerHTML = '';  // Clear previous content
-                textContainer.appendChild(textElement);
-            } else {
-                status.textContent = 'File upload failed: ' + data.message;
-            }
-        })
-        .catch(error => {
-            status.textContent = 'Error uploading file.';
-            console.error('Error:', error);
-        });
+                    // Update text container
+                    const textContainer = document.getElementById('text-container');
+                    const textElement = document.createElement('pre');
+                    textElement.textContent = data.extracted_text || 'No text extracted from the PDF.';
+                    textContainer.innerHTML = '';  // Clear previous content
+                    textContainer.appendChild(textElement);
+                } else {
+                    status.textContent = 'File upload failed: ' + data.message;
+                }
+            })
+            .catch(error => {
+                status.textContent = 'Error uploading file.';
+                console.error('Error:', error);
+            });
     }
 
     // Form submission for RAG query
-    document.getElementById('rag-form').addEventListener('submit', function(event) {
+    document.getElementById('rag-form').addEventListener('submit', function (event) {
         event.preventDefault();  // Prevent the default form submission behavior
         const query = document.getElementById('rag-query-input').value;
 
@@ -277,18 +327,18 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             body: JSON.stringify({ query: query })
         })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Response data:', data); // Log the whole response
-            const textContainer = document.getElementById('text-container');
-            const textElement = document.createElement('pre');
-            textElement.textContent = data.answer || 'No text extracted from the PDF.';
-            textContainer.innerHTML = '';  // Clear previous content
-            textContainer.appendChild(textElement);
-            document.getElementById('rag-response').textContent = 'Processed query: ' + query;
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
+            .then(response => response.json())
+            .then(data => {
+                console.log('Response data:', data); // Log the whole response
+                const textContainer = document.getElementById('text-container');
+                const textElement = document.createElement('pre');
+                textElement.textContent = data.answer || 'No text extracted from the PDF.';
+                textContainer.innerHTML = '';  // Clear previous content
+                textContainer.appendChild(textElement);
+                document.getElementById('rag-response').textContent = 'Processed query: ' + query;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
     });
 });

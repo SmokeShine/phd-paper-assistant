@@ -53,8 +53,8 @@ def fetch_json_from_url(url, cache_file_path):
         return None
 def load_conference_papers(conference_name):
     """
-    Loads papers from a conference's GitHub repository.
-    Returns a list of paper dictionaries.
+    Loads papers from a conference's GitHub repository, filters by accepted status,
+    and sorts them by year (latest first).
     """
     api_url = f"https://api.github.com/repos/papercopilot/paperlists/contents/{conference_name}"
     raw_url = f"https://raw.githubusercontent.com/papercopilot/paperlists/main/{conference_name}/"
@@ -80,8 +80,9 @@ def load_conference_papers(conference_name):
             # Extract year from filename (assuming format "confYEAR.json")
             year_str = "".join(filter(str.isdigit, file))
             year = int(year_str) if year_str.isdigit() else None
-            if year <= 2022:
+            if year is None or year <= 2022:
                 continue
+
             # Filter out papers with "Reject" or "Withdraw" status
             accepted_papers = [
                 {**paper, "year": year}
@@ -90,7 +91,12 @@ def load_conference_papers(conference_name):
             ]
             papers.extend(accepted_papers)
 
-        return papers
+        # Sort papers by year (latest first)
+        return sorted(papers, key=lambda x: x["year"], reverse=True)
+
+    except Exception as e:
+        print(f"Error loading conference papers: {e}")
+        return []
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching {conference_name} papers: {e}")
