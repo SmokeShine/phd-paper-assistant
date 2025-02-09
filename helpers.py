@@ -6,6 +6,8 @@ import requests
 import os
 import pickle
 from sentence_transformers import SentenceTransformer
+import feedparser
+from bs4 import BeautifulSoup, Comment
 import faiss
 import urllib
 import re
@@ -13,16 +15,21 @@ import uuid
 import json
 from pandas import json_normalize
 import pandas as pd
-from flask import redirect, render_template, request, session
+from flask import redirect,flash, render_template, request, session
 from functools import wraps
 import fitz
 from langchain_community.document_loaders import PyMuPDFLoader
 import ollama
 from cs50 import SQL
 import diskcache as dc  # Adding diskcache for caching
+from contextlib import contextmanager
+import sqlite3
 
 CACHE_DIR = "conference_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+# Configure CS50 Library to use SQLite database
+db = SQL("sqlite:///finance.db")
 
 def load_from_cache(file_path):
     """Load data from cache if it exists."""
@@ -104,8 +111,7 @@ def load_conference_papers(conference_name):
 
 
 
-# Configure CS50 Library to use SQLite database
-db = SQL("sqlite:///finance.db")
+
 
 # Initialize disk cache
 cache = dc.Cache("cache_directory")  # Specify a directory for cache storage
@@ -454,3 +460,226 @@ class VectorStore:
         with open(filename, "rb") as f:
             self.store = pickle.load(f)
         
+class DatabaseTransactionManager:
+    def __init__(self, db):
+        self.db = db
+    
+    @contextmanager
+    def transaction(self):
+        """Context manager for handling database transactions"""
+        try:
+            # Begin transaction
+            self.db.execute("BEGIN TRANSACTION")
+            yield
+            # Commit if no exceptions occurred
+            self.db.execute("COMMIT")
+        except Exception as e:
+            # Rollback on error
+            self.db.execute("ROLLBACK")
+            raise e
+
+class RSSFeedManager:
+    def __init__(self, db, cache_dir="cache"):
+        """Initialize RSS Feed Manager with database connection and cache directory"""
+        self.db = db
+        self.cache_dir = cache_dir
+        os.makedirs(cache_dir, exist_ok=True)
+
+    def get_user_feeds(self, user_id):
+        """Get all RSS feeds for a user"""
+        return self.db.execute("""
+            SELECT * FROM rss_feeds 
+            WHERE user_id = ? 
+            ORDER BY name
+        """, user_id)
+
+    def add_feed(self, user_id, name, url, category):
+        """Add a new RSS feed and fetch its initial articles"""
+        cache_file = os.path.join(self.cache_dir, f"feed_{hash(url)}.pickle")
+        
+        try:
+            # Try to get from cache first
+            # import pdb;pdb.set_trace()
+            feed_data = self._load_from_cache(cache_file)
+            if not feed_data:
+                feed = feedparser.parse(url)
+                if hasattr(feed, 'bozo') and feed.bozo:
+                    return {"success": False, "error": "Invalid feed URL"}
+                feed_data = feed
+                self._save_to_cache(cache_file, feed)
+
+            # Add feed to database
+            feed_id = self.db.execute("""
+                INSERT INTO rss_feeds (user_id, name, url, category, last_updated)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """, user_id, name, url, category)
+
+            # Get the last inserted ID
+            result = self.db.execute("SELECT last_insert_rowid() as id")
+            feed_id = result[0]['id']
+
+            # Store the articles
+            # import pdb;pdb.set_trace()
+            self._store_feed_articles(feed_id, feed_data.entries)
+            return {"success": True, "feed_id": feed_id}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def get_feed_articles(self, user_id, category=None, sort="newest"):
+        """Get articles from user's feeds with optional filtering and sorting"""
+        query = """
+            SELECT 
+                a.*, f.name as feed_name, f.category
+            FROM rss_articles a
+            JOIN rss_feeds f ON a.feed_id = f.id
+            WHERE f.user_id = ?
+        """
+        params = [user_id]
+        
+        if category and category != "all":
+            query += " AND f.category = ?"
+            params.append(category)
+        
+        query += " ORDER BY a.published_date"
+        if sort == "newest":
+            query += " DESC"
+        
+        return self.db.execute(query, *params)
+
+    def refresh_all_feeds(self, feed_id):
+        
+        """Refresh a specific RSS feed by fetching and storing new articles."""
+        try:
+            # Fetch feed details
+            feed_info = self.db.execute("SELECT * FROM rss_feeds WHERE id = ?", feed_id)
+            if not feed_info or len(feed_info) == 0:
+                return False
+                
+            feed_info = feed_info[0]
+
+            feed = feedparser.parse(feed_info['url'])
+
+            # Check if feed parsing was successful
+            if feed.bozo:  # Non-zero value indicates a parsing error
+                return {"success": False, "error": "Failed to parse feed"}
+
+            articles = []
+            for entry in feed.entries:
+                title = entry.get("title", "").strip()
+                link = entry.get("link", "").strip()
+                published = entry.get("published", "")
+
+                # Convert published date if available
+                pub_date = None
+                if published and hasattr(entry, "published_parsed"):
+                    try:
+                        pub_date = datetime.datetime(*entry.published_parsed[:6])
+                    except (ValueError, TypeError):
+                        pub_date = None  # Handle invalid dates gracefully
+
+                # Clean description using BeautifulSoup
+                raw_description = entry.get("description", "")
+                soup = BeautifulSoup(raw_description, "html.parser")
+                
+                # Remove HTML comments
+                for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
+                    comment.extract()
+                # Extract summary (assuming the first paragraph is the abstract)
+                paragraphs = soup.find_all('p')
+                description = paragraphs[1].text.strip() if len(paragraphs) > 1 else "No Summary Found"
+
+                articles.append({
+                    "feed_id": feed_id,
+                    "title": title,
+                    "link": link,
+                    "published": pub_date,
+                    "description": description
+                })
+
+            # Store cleaned articles in the database if new articles exist
+            if articles:
+                
+                self._store_feed_articles(feed_id, articles)
+
+                # Update last_updated timestamp
+                self.db.execute(
+                    "UPDATE rss_feeds SET last_updated = CURRENT_TIMESTAMP WHERE id = ?",
+                    (feed_id,)
+                )
+
+            return {"success": True, "articles_fetched": len(articles)}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _store_feed_articles(self, feed_id, entries):
+        """Store articles from feed entries"""
+        for entry in entries:
+            try:
+                # Clean the description text before storing
+                raw_description = entry.get('description', '')
+                soup = BeautifulSoup(raw_description, "html.parser")
+
+                # Remove HTML comments from description
+                for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
+                    comment.extract()
+
+                cleaned_description = soup.get_text().strip()  # Get plain text without HTML tags
+
+                # Parse publication date with fallback
+                try:
+                    published = entry.get('published', entry.get('updated'))
+                    if published:
+                        pub_date = datetime.datetime.strptime(published, '%a, %d %b %Y %H:%M:%S %z')
+                    else:
+                        pub_date = datetime.datetime.now(pytz.UTC)
+                except (ValueError, AttributeError):
+                    pub_date = datetime.datetime.now(pytz.UTC)
+
+                self.db.execute("""
+                    INSERT INTO rss_articles 
+                    (feed_id, title, description, link, published_date)
+                    VALUES (?, ?, ?, ?, ?)
+                """, 
+                    feed_id,
+                    entry.get('title', 'Untitled'),
+                    cleaned_description,
+                    entry.get('link', ''),
+                    pub_date
+                )
+            except sqlite3.IntegrityError:
+                continue
+            except Exception as e:
+                print(f"Error storing article: {str(e)}")
+                continue
+
+    def _load_from_cache(self, file_path):
+        """Load data from cache if it exists and is fresh"""
+        try:
+            if os.path.exists(file_path):
+                if (datetime.now() - datetime.fromtimestamp(os.path.getmtime(file_path))).seconds < 3600:
+                    with open(file_path, "rb") as f:
+                        return pickle.load(f)
+        except Exception as e:
+            print(f"Cache load error: {str(e)}")
+        return None
+
+    def _save_to_cache(self, file_path, data):
+        """Save data to cache file"""
+        try:
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+        except Exception as e:
+            print(f"Cache save error: {str(e)}")
+    def delete_feed(self, user_id, feed_id):
+        """Delete an RSS feed and its articles"""
+        try:
+            self.db.execute("DELETE FROM rss_articles WHERE feed_id = ?", feed_id)
+            self.db.execute("""
+                DELETE FROM rss_feeds 
+                WHERE id = ? AND user_id = ?
+            """, feed_id, user_id)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

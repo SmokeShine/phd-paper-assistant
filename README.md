@@ -6,10 +6,13 @@ PhD Paper Assistant is a web-based tool designed to help PhD students navigate a
 
 - Added subtabs for accepted papers in NeurIPS, ICML, ICLR and CVPR.
 - Search for keywords to find accepted papers across top conferences
+- Added RSS tab to manually add feeds and search 
 
 ![alt text](image-1.png)
 
 ![alt text](image.png)
+
+![alt text](image-2.png)
 
 ## Features
 

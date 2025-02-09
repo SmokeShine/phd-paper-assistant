@@ -219,3 +219,36 @@ form .form-control:focus {
 #text-container::-webkit-scrollbar-thumb:hover {
     background-color: #6c757d;
 }
+
+.rss-add-section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.rss-add-section h4 {
+    color: #212529;
+    margin-bottom: 15px;
+}
+
+#rss-form {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+#rss-url {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+#rss-form button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}

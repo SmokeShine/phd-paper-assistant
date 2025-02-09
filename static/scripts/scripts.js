@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Check if URL contains #rss-tab
+    if (window.location.hash === '#rss-tab') {
+        // Find and click the RSS tab
+        const rssTab = document.querySelector('a[href="#rss-tab"]');
+        if (rssTab) {
+            rssTab.click();
+        }
+    }
     let storedSelectedText = '';
 
     // Show context menu on right-click
@@ -66,20 +74,50 @@ document.addEventListener('DOMContentLoaded', function () {
             timer = setTimeout(() => func.apply(this, args), delay);
         };
     }
+    function addRssFeed() {
+        const rssUrl = document.getElementById('rss-url').value.trim();
+        if (!rssUrl) {
+            alert('Please enter an RSS feed URL');
+            return;
+        }
+    
+        // Validate the URL format
+        const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+        if (!urlPattern.test(rssUrl)) {
+            alert('Please enter a valid URL');
+            return;
+        }
+    
+        // Add the RSS feed to your list
+        // Here, you would typically make an API call or update your data structure
+        // For this example, we'll just show a success message
+        alert('RSS feed added successfully!');
+        
+        // Clear the input
+        document.getElementById('rss-url').value = '';
+    }
+    
+    // Optional: Add form validation and error handling
+    document.getElementById('rss-url').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            addRssFeed();
+        }
+    });
     
     function filterPapers(query) {
         query = query.toLowerCase();
         
         let visibleCards = 0;
         const paperContainer = document.querySelector(".row"); // Adjust if necessary
-        const paperCards = document.querySelectorAll(".col-md-6.col-lg-4"); // Select cards
-    
+        
+        // Filter paper cards (existing functionality)
+        const paperCards = document.querySelectorAll(".col-md-6.col-lg-4"); // Select paper cards
         paperCards.forEach(card => {
             const title = card.querySelector('.card-title')?.textContent.toLowerCase() || "";
             const tags = card.querySelector('.card-footer')?.textContent.toLowerCase() || "";
             
             const shouldShow = title.includes(query) || tags.includes(query);
-    
+            
             if (shouldShow) {
                 card.classList.remove("d-none"); // Bootstrap class for proper hiding
                 visibleCards++;
@@ -88,6 +126,25 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     
+        // Add RSS article filtering
+        const rssCards = document.querySelectorAll(".rss-article-card");
+        rssCards.forEach(card => {
+            const title = card.querySelector('.card-title')?.textContent.toLowerCase() || "";
+            const description = card.querySelector('.card-text')?.textContent.toLowerCase() || "";
+            const feedName = card.querySelector('.feed-name')?.textContent.toLowerCase() || "";
+            
+            const shouldShow = title.includes(query) || 
+                              description.includes(query) || 
+                              feedName.includes(query);
+            
+            if (shouldShow) {
+                card.classList.remove("d-none");
+                visibleCards++;
+            } else {
+                card.classList.add("d-none");
+            }
+        });
+        
         // If no cards match, show the alert message
         const noResultsAlert = document.querySelector(".alert-info");
         if (noResultsAlert) {

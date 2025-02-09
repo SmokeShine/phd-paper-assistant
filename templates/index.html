@@ -7,9 +7,9 @@ Hugging Face Daily Papers
 <div class="container py-5">
     <div class="row">
         <!-- Search Input -->
-<div class="mb-3">
-    <input type="text" id="searchInput" class="form-control" placeholder="Search papers...">
-</div>
+        <div class="mb-3">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search papers...">
+        </div>
 
         <!-- Tab navigation -->
         <nav class="nav nav-tabs mb-4">
@@ -27,6 +27,9 @@ Hugging Face Daily Papers
             </div>
             <div class="nav-item">
                 <a class="nav-link" data-bs-toggle="tab" href="#cvpr-tab">CVPR Papers</a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#rss-tab">RSS Feed</a>
             </div>
         </nav>
 
@@ -241,6 +244,107 @@ Hugging Face Daily Papers
                         </div>
                         {% endif %}
                     </div>
+                </div>
+            </div>
+
+        </div>
+        <!-- RSS Feed tab content -->
+        <div class="tab-pane fade" id="rss-tab">
+            <div class="container">
+                <!-- RSS Feed Management Section -->
+                <div class="row mb-4">
+                    <!-- Add Feed Form -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Add New RSS Feed</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="rss-form" action="{{ url_for('add_rss_feed_route') }}" method="POST">
+                                    <div class="mb-3">
+                                        <label for="feed-name" class="form-label">Feed Name</label>
+                                        <input type="text" class="form-control" id="feed-name" name="feed_name"
+                                            required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="rss-url" class="form-label">RSS URL</label>
+                                        <input type="url" class="form-control" id="rss-url" name="rss_url" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="category" class="form-label">Category</label>
+                                        <select class="form-select" id="category" name="category" required>
+                                            <option value="AI">Artificial Intelligence</option>
+                                            <option value="ML">Machine Learning</option>
+                                            <option value="DL">Deep Learning</option>
+                                            <option value="OTHER">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="submit" class="btn btn-primary">Add</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subscribed Feeds List -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Subscribed Feeds</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if subscribed_feeds %}
+                                <div class="list-group">
+                                    {% for feed in subscribed_feeds %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">{{ feed.name }}</h6>
+                                            <small class="text-muted">{{ feed.url }}</small>
+                                            <span class="badge bg-secondary">{{ feed.category }}</span>
+                                        </div>
+                                        <form action="{{ url_for('delete_feed_route', feed_id=feed.id) }}" method="POST"
+                                            style="display: inline;">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted text-center">No feeds subscribed yet</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feed Articles -->
+                <div class="row">
+                    {% if feed_articles %}
+                    {% for article in feed_articles %}
+                    <div class="col-md-4 mb-4 rss-article-card">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ article.title }}</h5>
+                                <p class="card-text">{{ article.description|truncate(200) }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">{{ article.published_date }}</small>
+                                    <a href="{{ article.link }}" class="btn btn-sm btn-primary" target="_blank">Read
+                                        More</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="col-12">
+                        <div class="alert alert-info text-center">
+                            No articles found. Add some RSS feeds to get started!
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

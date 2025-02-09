@@ -13,7 +13,7 @@ from flask import (
     jsonify,
     send_from_directory,
     url_for,
-    Response
+    Response,
 )
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -23,10 +23,9 @@ from helpers import (
     login_required,
     lookup_titles,
     extract_text_from_pdf,
-    remove_section_from_text,
-    remove_references_from_text,
+    RSSFeedManager,
     db,
-    VectorStore
+    VectorStore,
 )
 import ollama
 import uuid
@@ -45,6 +44,7 @@ model = SentenceTransformer(MODEL_NAME)
 # Configure application
 app = Flask(__name__)
 
+rss_manager = RSSFeedManager(db)
 
 TAGS_FOLDER = "tags"
 os.makedirs(TAGS_FOLDER, exist_ok=True)
@@ -57,7 +57,14 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 vector_store = VectorStore()
 Session(app)
 
-
+# Read and execute the SQL file
+with open('init_rss_db.sql', 'r') as sql_file:
+    sql_commands = sql_file.read()
+    # Split commands and execute each one
+    for command in sql_commands.split(';'):
+        if command.strip():
+            db.execute(command)
+            
 def hierarchical_clustering(graph):
     ig_graph = ig.Graph.from_networkx(graph)
     partition = leidenalg.find_partition(ig_graph, leidenalg.ModularityVertexPartition)
@@ -186,8 +193,8 @@ def summarize_communities(communities, graph):
     return community_summaries
 
 
-def generate_answers_from_communities(summaries_embeddings,community_summaries, query):
-    
+def generate_answers_from_communities(summaries_embeddings, community_summaries, query):
+
     query_embedding = model.encode([query])
     # Compute cosine similarities between query and each community summary
     similarities = cosine_similarity(query_embedding, summaries_embeddings)
@@ -234,14 +241,39 @@ def index():
     neurips_papers = load_conference_papers("nips")
     icml_papers = load_conference_papers("icml")
     cvpr_papers = load_conference_papers("cvpr")
+    # Load RSS feeds and articles
+    try:
+        # import pdb;pdb.set_trace()
+        # Get user's subscribed feeds
+        subscribed_feeds = rss_manager.get_user_feeds(session["user_id"])
+        
+        # Refresh all feeds to get latest articles
+        rss_manager.refresh_all_feeds(session["user_id"])
+        
+        # Get all articles from subscribed feeds
+        feed_articles = rss_manager.get_feed_articles(
+            session["user_id"],
+            category=request.args.get("category"),
+            sort=request.args.get("sort", "newest")
+        )
+        
+    except Exception as e:
+        print(f"Error loading RSS content: {str(e)}")
+        subscribed_feeds = []
+        feed_articles = []
 
-    return render_template("index.html",
-                         papers_data=papers_data,
-                         iclr_papers=iclr_papers,
-                         neurips_papers=neurips_papers,
-                         icml_papers=icml_papers,
-                         cvpr_papers=cvpr_papers,is_hugging_face=True), 200
-    
+    return render_template(
+        "index.html",
+        papers_data=papers_data,
+        iclr_papers=iclr_papers,
+        neurips_papers=neurips_papers,
+        icml_papers=icml_papers,
+        cvpr_papers=cvpr_papers,
+        subscribed_feeds=subscribed_feeds,
+        feed_articles=feed_articles,
+        is_hugging_face=True,
+    ), 200
+
 
 @app.route("/history")
 @login_required
@@ -389,9 +421,6 @@ def register():
         return render_template("register.html")
 
 
-
-
-
 @app.route("/eli5", methods=["POST"])
 def eli5():
     conversation_history = []
@@ -407,7 +436,9 @@ def eli5():
 
         def generate_response():
             try:
-                response_stream = ollama.chat(model="llama3.2", messages=conversation_history, stream=True)
+                response_stream = ollama.chat(
+                    model="llama3.2", messages=conversation_history, stream=True
+                )
                 for chunk in response_stream:
                     content = chunk.get("message", {}).get("content", "").strip()
                     if content:
@@ -530,13 +561,15 @@ def upload_pdf():
             # Generate paths for both the PDF file and its corresponding .pkl file
             file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
             vector_store_filename = os.path.splitext(file.filename)[0] + ".pkl"
-            vector_store_path = os.path.join(app.config["UPLOAD_FOLDER"], vector_store_filename)
+            vector_store_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], vector_store_filename
+            )
 
             # Check if the .pkl file already exists
             if os.path.exists(vector_store_path):
                 try:
                     # Load the vector store from disk if the file exists
-                    with open(vector_store_path, 'rb') as f:
+                    with open(vector_store_path, "rb") as f:
                         vector_store = pickle.load(f)
                         text = extract_text_from_pdf(file_path)
                         session["documents"] = [text]  # Store text in session
@@ -566,9 +599,9 @@ def upload_pdf():
             # Extract text from the PDF
             text = extract_text_from_pdf(file_path)
             session["documents"] = [text]  # Store text in session
-            
+
             vector_store.clear()  # Clear the vector store for the new PDF
-            
+
             try:
                 # Save documents to vector store
                 vector_store.save("documents", text)
@@ -593,10 +626,10 @@ def upload_pdf():
                 vector_store.save("community_summaries", community_summaries)
 
                 summaries_embeddings = model.encode(community_summaries)
-                vector_store.save('summaries_embeddings', summaries_embeddings)
+                vector_store.save("summaries_embeddings", summaries_embeddings)
 
                 # Save vector store to disk in Pickle format
-                with open(vector_store_path, 'wb') as f:
+                with open(vector_store_path, "wb") as f:
                     pickle.dump(vector_store, f)
 
                 return jsonify(
@@ -703,22 +736,26 @@ def rag_query():
 
     try:
         # Load intermediate data from vector store with fallback logic
-        
-        documents = vector_store.load('documents')
+
+        documents = vector_store.load("documents")
         if not documents:
             return jsonify({"error": "No documents available for processing"}), 500
-        
-        chunks = vector_store.load('chunks') or split_documents_into_chunks([documents])
-        elements = vector_store.load('elements') or extract_elements_from_chunks(chunks)
-        summaries = vector_store.load('summaries') or summarize_elements(elements)
-        graph = vector_store.load('graph') or build_graph_from_summaries(summaries)
-        communities = vector_store.load('communities') or detect_communities(graph)
-        community_summaries = vector_store.load('community_summaries') or summarize_communities(communities, graph)
-        summaries_embeddings = vector_store.load('summaries_embeddings')
+
+        chunks = vector_store.load("chunks") or split_documents_into_chunks([documents])
+        elements = vector_store.load("elements") or extract_elements_from_chunks(chunks)
+        summaries = vector_store.load("summaries") or summarize_elements(elements)
+        graph = vector_store.load("graph") or build_graph_from_summaries(summaries)
+        communities = vector_store.load("communities") or detect_communities(graph)
+        community_summaries = vector_store.load(
+            "community_summaries"
+        ) or summarize_communities(communities, graph)
+        summaries_embeddings = vector_store.load("summaries_embeddings")
         if summaries_embeddings is None:
             summaries_embeddings = model.encode(community_summaries)
-        response = generate_answers_from_communities(summaries_embeddings,community_summaries, query)
-        
+        response = generate_answers_from_communities(
+            summaries_embeddings, community_summaries, query
+        )
+
         return jsonify({"answer": response}), 200
 
     except Exception as e:
@@ -787,3 +824,36 @@ def unpin_paper(paper_id):
         flash("Paper not found.")
 
     return redirect(url_for("index"))
+
+
+@app.route("/delete_feed/<int:feed_id>", methods=["POST"])
+@login_required
+def delete_feed_route(feed_id):
+    result = rss_manager.delete_feed(session["user_id"], feed_id)
+    if result["success"]:
+        flash("Feed deleted successfully!", "success")
+    else:
+        flash(f"Error deleting feed: {result['error']}", "error")
+    
+    return redirect(url_for("index", _anchor="rss-tab"))
+
+@app.route("/add_rss_feed_route", methods=["POST"])
+@login_required
+def add_rss_feed_route():
+    result = rss_manager.add_feed(
+        session["user_id"],
+        request.form.get("feed_name"),
+        request.form.get("rss_url"),
+        request.form.get("category")
+    )
+    if result["success"]:
+        flash("RSS feed added successfully!", "success")
+    else:
+        flash(f"Error adding RSS feed: {result['error']}", "error")
+    return redirect(url_for("index", _anchor="rss-tab"))
+
+@app.route("/feeds/refresh", methods=["POST"])
+@login_required
+def refresh_feeds_route():
+    return rss_manager.refresh_all_feeds(session["user_id"])
+
