@@ -1,6 +1,7 @@
 import os
 import pickle
 from sklearn.metrics.pairwise import cosine_similarity
+from flask_apscheduler import APScheduler
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from flask import (
@@ -15,6 +16,8 @@ from flask import (
     url_for,
     Response,
 )
+from datetime import datetime
+import pytz
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from helpers import (
@@ -26,6 +29,7 @@ from helpers import (
     RSSFeedManager,
     db,
     VectorStore,
+    scheduler,
 )
 import ollama
 import uuid
@@ -43,8 +47,11 @@ model = SentenceTransformer(MODEL_NAME)
 
 # Configure application
 app = Flask(__name__)
-
-rss_manager = RSSFeedManager(db)
+app.config["SCHEDULER_API_ENABLED"] = True
+# Initialize scheduler
+scheduler.init_app(app)
+scheduler.start()
+rss_manager = RSSFeedManager(db, refresh_interval=30)
 
 TAGS_FOLDER = "tags"
 os.makedirs(TAGS_FOLDER, exist_ok=True)
@@ -58,13 +65,14 @@ vector_store = VectorStore()
 Session(app)
 
 # Read and execute the SQL file
-with open('init_rss_db.sql', 'r') as sql_file:
+with open("init_rss_db.sql", "r") as sql_file:
     sql_commands = sql_file.read()
     # Split commands and execute each one
-    for command in sql_commands.split(';'):
+    for command in sql_commands.split(";"):
         if command.strip():
             db.execute(command)
-            
+
+
 def hierarchical_clustering(graph):
     ig_graph = ig.Graph.from_networkx(graph)
     partition = leidenalg.find_partition(ig_graph, leidenalg.ModularityVertexPartition)
@@ -246,33 +254,36 @@ def index():
         # import pdb;pdb.set_trace()
         # Get user's subscribed feeds
         subscribed_feeds = rss_manager.get_user_feeds(session["user_id"])
-        
+
         # Refresh all feeds to get latest articles
         rss_manager.refresh_all_feeds(session["user_id"])
-        
+
         # Get all articles from subscribed feeds
         feed_articles = rss_manager.get_feed_articles(
             session["user_id"],
             category=request.args.get("category"),
-            sort=request.args.get("sort", "newest")
+            sort=request.args.get("sort", "newest"),
         )
-        
+
     except Exception as e:
         print(f"Error loading RSS content: {str(e)}")
         subscribed_feeds = []
         feed_articles = []
 
-    return render_template(
-        "index.html",
-        papers_data=papers_data,
-        iclr_papers=iclr_papers,
-        neurips_papers=neurips_papers,
-        icml_papers=icml_papers,
-        cvpr_papers=cvpr_papers,
-        subscribed_feeds=subscribed_feeds,
-        feed_articles=feed_articles,
-        is_hugging_face=True,
-    ), 200
+    return (
+        render_template(
+            "index.html",
+            papers_data=papers_data,
+            iclr_papers=iclr_papers,
+            neurips_papers=neurips_papers,
+            icml_papers=icml_papers,
+            cvpr_papers=cvpr_papers,
+            subscribed_feeds=subscribed_feeds,
+            feed_articles=feed_articles,
+            is_hugging_face=True,
+        ),
+        200,
+    )
 
 
 @app.route("/history")
@@ -834,8 +845,9 @@ def delete_feed_route(feed_id):
         flash("Feed deleted successfully!", "success")
     else:
         flash(f"Error deleting feed: {result['error']}", "error")
-    
+
     return redirect(url_for("index", _anchor="rss-tab"))
+
 
 @app.route("/add_rss_feed_route", methods=["POST"])
 @login_required
@@ -844,7 +856,7 @@ def add_rss_feed_route():
         session["user_id"],
         request.form.get("feed_name"),
         request.form.get("rss_url"),
-        request.form.get("category")
+        request.form.get("category"),
     )
     if result["success"]:
         flash("RSS feed added successfully!", "success")
@@ -852,8 +864,40 @@ def add_rss_feed_route():
         flash(f"Error adding RSS feed: {result['error']}", "error")
     return redirect(url_for("index", _anchor="rss-tab"))
 
+
 @app.route("/feeds/refresh", methods=["POST"])
 @login_required
 def refresh_feeds_route():
+    import pdb;pdb.set_trace()
     return rss_manager.refresh_all_feeds(session["user_id"])
 
+@app.template_filter('timeago')
+def timeago_filter(timestamp):
+    """Convert timestamp to "time ago" text"""
+    if not timestamp:
+        return ''
+    
+    try:
+        # Convert string to datetime if needed
+        if isinstance(timestamp, str):
+            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            
+        now = datetime.datetime.now(pytz.UTC)
+        diff = now - timestamp
+
+        seconds = diff.total_seconds()
+        if seconds < 60:
+            return 'just now'
+        elif seconds < 3600:
+            minutes = int(seconds / 60)
+            return f'{minutes}m ago'
+        elif seconds < 86400:
+            hours = int(seconds / 3600)
+            return f'{hours}h ago'
+        elif seconds < 604800:
+            days = int(seconds / 86400)
+            return f'{days}d ago'
+        else:
+            return timestamp.strftime('%Y-%m-%d')
+    except Exception:
+        return str(timestamp)

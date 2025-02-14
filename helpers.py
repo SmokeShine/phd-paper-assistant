@@ -24,12 +24,14 @@ from cs50 import SQL
 import diskcache as dc  # Adding diskcache for caching
 from contextlib import contextmanager
 import sqlite3
+from flask_apscheduler import APScheduler
 
 CACHE_DIR = "conference_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
+scheduler = APScheduler()
 
 def load_from_cache(file_path):
     """Load data from cache if it exists."""
@@ -479,11 +481,14 @@ class DatabaseTransactionManager:
             raise e
 
 class RSSFeedManager:
-    def __init__(self, db, cache_dir="cache"):
+    def __init__(self, db, cache_dir="cache",refresh_interval=30):
         """Initialize RSS Feed Manager with database connection and cache directory"""
         self.db = db
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
+        self.refresh_interval = refresh_interval
+        self.setup_auto_refresh()
+
 
     def get_user_feeds(self, user_id):
         """Get all RSS feeds for a user"""
@@ -546,119 +551,180 @@ class RSSFeedManager:
             query += " DESC"
         
         return self.db.execute(query, *params)
+    def setup_auto_refresh(self):
+        """Setup automatic refresh scheduler"""
+        @scheduler.task('interval', id='refresh_feeds', minutes=self.refresh_interval, misfire_grace_time=900)
+        def auto_refresh_feeds():
+            print(f"Auto-refreshing feeds at {datetime.datetime.now()}")
+            stale_feeds = self.db.execute("""
+                SELECT * FROM rss_feeds 
+                WHERE last_updated IS NULL 
+                OR datetime(last_updated) <= datetime('now', '-30 minutes')
+            """)
+            
+            for feed in stale_feeds:
+                try:
+                    self.refresh_feed(feed['id'])
+                except Exception as e:
+                    print(f"Error auto-refreshing feed {feed['id']}: {str(e)}")
+            
+            print(f"Finished auto-refresh at {datetime.datetime.now()}")
 
-    def refresh_all_feeds(self, feed_id):
-        
-        """Refresh a specific RSS feed by fetching and storing new articles."""
+    def refresh_feed(self, feed_id):
+        """Refresh a specific feed"""
         try:
-            # Fetch feed details
-            feed_info = self.db.execute("SELECT * FROM rss_feeds WHERE id = ?", feed_id)
-            if not feed_info or len(feed_info) == 0:
-                return False
+            feed = self.db.execute("SELECT * FROM rss_feeds WHERE id = ?", feed_id)
+            if not feed or len(feed) == 0:
+                return {"success": False, "error": "Feed not found"}
+            
+            feed = feed[0]
+            feed_data = feedparser.parse(feed['url'])
+            
+            if not hasattr(feed_data, 'bozo') or not feed_data.bozo:
+                self._store_feed_articles(feed['id'], feed_data.entries)
                 
-            feed_info = feed_info[0]
-
-            feed = feedparser.parse(feed_info['url'])
-
-            # Check if feed parsing was successful
-            if feed.bozo:  # Non-zero value indicates a parsing error
-                return {"success": False, "error": "Failed to parse feed"}
-
-            articles = []
-            for entry in feed.entries:
-                title = entry.get("title", "").strip()
-                link = entry.get("link", "").strip()
-                published = entry.get("published", "")
-
-                # Convert published date if available
-                pub_date = None
-                if published and hasattr(entry, "published_parsed"):
-                    try:
-                        pub_date = datetime.datetime(*entry.published_parsed[:6])
-                    except (ValueError, TypeError):
-                        pub_date = None  # Handle invalid dates gracefully
-
-                # Clean description using BeautifulSoup
-                raw_description = entry.get("description", "")
-                soup = BeautifulSoup(raw_description, "html.parser")
+                self.db.execute("""
+                    UPDATE rss_feeds 
+                    SET last_updated = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                """, feed['id'])
                 
-                # Remove HTML comments
-                for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
-                    comment.extract()
-                # Extract summary (assuming the first paragraph is the abstract)
-                paragraphs = soup.find_all('p')
-                description = paragraphs[1].text.strip() if len(paragraphs) > 1 else "No Summary Found"
+                return {"success": True, "message": f"Feed {feed['name']} refreshed successfully"}
+            
+            return {"success": False, "error": "Invalid feed data"}
+            
+        except Exception as e:
+            print(f"Error refreshing feed: {str(e)}")
+            return {"success": False, "error": str(e)}
+    def refresh_all_feeds(self, user_id=None):
+        """Refresh all feeds for a user or all feeds if user_id is None"""
+        try:
+            # Get feeds to refresh
+            if user_id:
+                feeds = self.db.execute("""
+                    SELECT * FROM rss_feeds 
+                    WHERE user_id = ?
+                """, user_id)
+            else:
+                feeds = self.db.execute("SELECT * FROM rss_feeds")
 
-                articles.append({
-                    "feed_id": feed_id,
-                    "title": title,
-                    "link": link,
-                    "published": pub_date,
-                    "description": description
-                })
+            refreshed_count = 0
+            for feed in feeds:
+                try:
+                    # Parse feed
+                    feed_data = feedparser.parse(feed['url'])
+                    if not hasattr(feed_data, 'bozo') or not feed_data.bozo:
+                        # Store new articles
+                        self._store_feed_articles(feed['id'], feed_data.entries)
+                        
+                        # Update last_updated timestamp
+                        self.db.execute("""
+                            UPDATE rss_feeds 
+                            SET last_updated = CURRENT_TIMESTAMP 
+                            WHERE id = ?
+                        """, feed['id'])
+                        
+                        refreshed_count += 1
+                except Exception as e:
+                    print(f"Error refreshing feed {feed['url']}: {str(e)}")
+                    continue
 
-            # Store cleaned articles in the database if new articles exist
-            if articles:
+            return {
+                "success": True, 
+                "message": f"Successfully refreshed {refreshed_count} feeds",
+                "refreshed_count": refreshed_count
+            }
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def refresh_feed(self, feed_id):
+        """Refresh a specific feed"""
+        try:
+            # Get feed info
+            feed = self.db.execute("SELECT * FROM rss_feeds WHERE id = ?", feed_id)
+            if not feed or len(feed) == 0:
+                return {"success": False, "error": "Feed not found"}
+            
+            feed = feed[0]
+            
+            # Parse and store new articles
+            feed_data = feedparser.parse(feed['url'])
+            if not hasattr(feed_data, 'bozo') or not feed_data.bozo:
+                self._store_feed_articles(feed['id'], feed_data.entries)
                 
-                self._store_feed_articles(feed_id, articles)
-
-                # Update last_updated timestamp
-                self.db.execute(
-                    "UPDATE rss_feeds SET last_updated = CURRENT_TIMESTAMP WHERE id = ?",
-                    (feed_id,)
-                )
-
-            return {"success": True, "articles_fetched": len(articles)}
+                # Update timestamp
+                self.db.execute("""
+                    UPDATE rss_feeds 
+                    SET last_updated = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                """, feed['id'])
+                
+                return {"success": True, "message": "Feed refreshed successfully"}
+            else:
+                return {"success": False, "error": "Invalid feed data"}
 
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def _store_feed_articles(self, feed_id, entries):
         """Store articles from feed entries"""
-        for entry in entries:
-            try:
-                # Clean the description text before storing
-                raw_description = entry.get('description', '')
-                soup = BeautifulSoup(raw_description, "html.parser")
-
-                # Remove HTML comments from description
-                for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
-                    comment.extract()
-
-                cleaned_description = soup.get_text().strip()  # Get plain text without HTML tags
-
-                # Parse publication date with fallback
+        try:
+            # Get feed info using CS50 SQL
+            feed_info = self.db.execute("SELECT * FROM rss_feeds WHERE id = ?", feed_id)
+            if not feed_info or len(feed_info) == 0:
+                return False
+                
+            feed_info = feed_info[0]  # Get the first row since CS50 SQL returns a list
+            
+            for entry in entries:
                 try:
-                    published = entry.get('published', entry.get('updated'))
-                    if published:
-                        pub_date = datetime.datetime.strptime(published, '%a, %d %b %Y %H:%M:%S %z')
-                    else:
+                    # Parse publication date with fallback
+                    try:
+                        published = entry.get('published', entry.get('updated'))
+                        if published:
+                            pub_date = datetime.datetime.strptime(published, '%a, %d %b %Y %H:%M:%S %z')
+                        else:
+                            pub_date = datetime.datetime.now(pytz.UTC)
+                    except (ValueError, AttributeError):
                         pub_date = datetime.datetime.now(pytz.UTC)
-                except (ValueError, AttributeError):
-                    pub_date = datetime.datetime.now(pytz.UTC)
-
-                self.db.execute("""
-                    INSERT INTO rss_articles 
-                    (feed_id, title, description, link, published_date)
-                    VALUES (?, ?, ?, ?, ?)
-                """, 
-                    feed_id,
-                    entry.get('title', 'Untitled'),
-                    cleaned_description,
-                    entry.get('link', ''),
-                    pub_date
-                )
-            except sqlite3.IntegrityError:
-                continue
-            except Exception as e:
-                print(f"Error storing article: {str(e)}")
-                continue
+                    
+                    # Check if article already exists
+                    existing_article = self.db.execute("""
+                        SELECT id FROM rss_articles 
+                        WHERE feed_id = ? AND link = ?
+                    """, feed_id, entry.get('link', ''))
+                    
+                    if not existing_article:
+                        # Insert only if article doesn't exist
+                        self.db.execute("""
+                            INSERT INTO rss_articles 
+                            (feed_id, title, description, link, published_date)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, 
+                            feed_id,
+                            entry.get('title', 'Untitled'),
+                            entry.get('description', entry.get('summary', '')),
+                            entry.get('link', ''),
+                            pub_date.isoformat()
+                        )
+                    
+                except Exception as e:
+                    if not "UNIQUE constraint failed" in str(e):
+                        print(f"Error storing article: {str(e)}")
+                    continue
+                    
+            return True
+        
+        except Exception as e:
+            print(f"Error in _store_feed_articles: {str(e)}")
+            return False
 
     def _load_from_cache(self, file_path):
         """Load data from cache if it exists and is fresh"""
         try:
             if os.path.exists(file_path):
-                if (datetime.now() - datetime.fromtimestamp(os.path.getmtime(file_path))).seconds < 3600:
+                if (datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(file_path))).seconds < 3600:
                     with open(file_path, "rb") as f:
                         return pickle.load(f)
         except Exception as e:

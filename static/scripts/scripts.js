@@ -1,4 +1,20 @@
 document.addEventListener('DOMContentLoaded', function () {
+    let isScrolling = false;
+
+    window.addEventListener('scroll', function () {
+        if (!isScrolling) {
+            window.requestAnimationFrame(function () {
+                const backToTopButton = document.getElementById('back-to-top');
+                if (window.scrollY > 200) {
+                    backToTopButton.classList.add('show');
+                } else {
+                    backToTopButton.classList.remove('show');
+                }
+                isScrolling = false;
+            });
+            isScrolling = true;
+        }
+    });
     // Check if URL contains #rss-tab
     if (window.location.hash === '#rss-tab') {
         // Find and click the RSS tab
@@ -80,44 +96,44 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Please enter an RSS feed URL');
             return;
         }
-    
+
         // Validate the URL format
         const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
         if (!urlPattern.test(rssUrl)) {
             alert('Please enter a valid URL');
             return;
         }
-    
+
         // Add the RSS feed to your list
         // Here, you would typically make an API call or update your data structure
         // For this example, we'll just show a success message
         alert('RSS feed added successfully!');
-        
+
         // Clear the input
         document.getElementById('rss-url').value = '';
     }
-    
+
     // Optional: Add form validation and error handling
-    document.getElementById('rss-url').addEventListener('keypress', function(e) {
+    document.getElementById('rss-url').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             addRssFeed();
         }
     });
-    
+
     function filterPapers(query) {
         query = query.toLowerCase();
-        
+
         let visibleCards = 0;
         const paperContainer = document.querySelector(".row"); // Adjust if necessary
-        
+
         // Filter paper cards (existing functionality)
         const paperCards = document.querySelectorAll(".col-md-6.col-lg-4"); // Select paper cards
         paperCards.forEach(card => {
             const title = card.querySelector('.card-title')?.textContent.toLowerCase() || "";
             const tags = card.querySelector('.card-footer')?.textContent.toLowerCase() || "";
-            
+
             const shouldShow = title.includes(query) || tags.includes(query);
-            
+
             if (shouldShow) {
                 card.classList.remove("d-none"); // Bootstrap class for proper hiding
                 visibleCards++;
@@ -125,18 +141,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.classList.add("d-none");
             }
         });
-    
+
         // Add RSS article filtering
         const rssCards = document.querySelectorAll(".rss-article-card");
         rssCards.forEach(card => {
             const title = card.querySelector('.card-title')?.textContent.toLowerCase() || "";
             const description = card.querySelector('.card-text')?.textContent.toLowerCase() || "";
             const feedName = card.querySelector('.feed-name')?.textContent.toLowerCase() || "";
-            
-            const shouldShow = title.includes(query) || 
-                              description.includes(query) || 
-                              feedName.includes(query);
-            
+
+            const shouldShow = title.includes(query) ||
+                description.includes(query) ||
+                feedName.includes(query);
+
             if (shouldShow) {
                 card.classList.remove("d-none");
                 visibleCards++;
@@ -144,22 +160,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.classList.add("d-none");
             }
         });
-        
+
         // If no cards match, show the alert message
         const noResultsAlert = document.querySelector(".alert-info");
         if (noResultsAlert) {
             noResultsAlert.style.display = visibleCards === 0 ? "block" : "none";
         }
     }
-    
+
     // Add event listener with debounce for better performance
     document.getElementById('searchInput').addEventListener('input', debounce(function (e) {
         filterPapers(e.target.value);
     }, 150));
-    
+
     // Initial filter (show all papers)
     filterPapers('');
-    
+
 
 
     // Function to handle the question submission

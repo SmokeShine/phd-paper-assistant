@@ -249,6 +249,7 @@ Hugging Face Daily Papers
 
         </div>
         <!-- RSS Feed tab content -->
+        <!-- RSS Feed tab content -->
         <div class="tab-pane fade" id="rss-tab">
             <div class="container">
                 <!-- RSS Feed Management Section -->
@@ -280,7 +281,9 @@ Hugging Face Daily Papers
                                         </select>
                                     </div>
                                     <div class="text-end">
-                                        <button type="submit" class="btn btn-primary">Add</button>
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-plus"></i> Add Feed
+                                        </button>
                                     </div>
                                 </form>
                             </div>
@@ -290,25 +293,59 @@ Hugging Face Daily Papers
                     <!-- Subscribed Feeds List -->
                     <div class="col-md-6">
                         <div class="card">
-                            <div class="card-header">
+                            <div class="card-header d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">Subscribed Feeds</h5>
+                                <small class="text-muted">
+                                    <i class="fas fa-sync-alt fa-spin me-1"></i> Auto-refreshes every 30 minutes
+                                </small>
                             </div>
                             <div class="card-body">
                                 {% if subscribed_feeds %}
                                 <div class="list-group">
                                     {% for feed in subscribed_feeds %}
-                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="mb-1">{{ feed.name }}</h6>
-                                            <small class="text-muted">{{ feed.url }}</small>
-                                            <span class="badge bg-secondary">{{ feed.category }}</span>
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="feed-info">
+                                                <h6 class="mb-1">{{ feed.name }}</h6>
+                                                <small class="text-muted d-block">{{ feed.url }}</small>
+                                                <div class="mt-1">
+                                                    <span class="badge bg-secondary me-2">{{ feed.category }}</span>
+                                                    <!-- Status Indicator -->
+                                                    {% if feed.last_updated %}
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock"></i>
+                                                        Last updated: {{ feed.last_updated | timeago }}
+                                                    </small>
+                                                    {% if feed.status == 'success' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> Active
+                                                    </span>
+                                                    {% elif feed.status == 'error' %}
+                                                    <span class="badge bg-danger" title="{{ feed.last_error }}">
+                                                        <i class="fas fa-exclamation-triangle"></i> Error
+                                                    </span>
+                                                    {% else %}
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="fas fa-sync"></i> Pending
+                                                    </span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-clock"></i> Never updated
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <form action="{{ url_for('delete_feed_route', feed_id=feed.id) }}"
+                                                    method="POST">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        title="Delete feed">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
-                                        <form action="{{ url_for('delete_feed_route', feed_id=feed.id) }}" method="POST"
-                                            style="display: inline;">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        </form>
                                     </div>
                                     {% endfor %}
                                 </div>

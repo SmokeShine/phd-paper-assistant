@@ -252,3 +252,172 @@ form .form-control:focus {
     border-radius: 4px;
     cursor: pointer;
 }
+
+
+/* RSS Feed Component Styles */
+
+/* Feed List Container */
+.rss-feed-container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Feed Item Styling */
+.feed-item {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+.feed-item:last-child {
+    border-bottom: none;
+}
+
+.feed-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Feed Information Layout */
+.feed-info {
+    flex: 1;
+    min-width: 0;
+    margin-right: 1rem;
+}
+
+.feed-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.feed-url {
+    font-size: 0.875rem;
+    color: #6c757d;
+    word-break: break-all;
+}
+
+/* Status Indicators */
+.feed-status {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25em 0.75em;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-badge i {
+    font-size: 0.75em;
+}
+
+/* Status Colors */
+.status-active {
+    background-color: #10b981;
+    color: white;
+}
+
+.status-error {
+    background-color: #ef4444;
+    color: white;
+}
+
+.status-pending {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.status-inactive {
+    background-color: #6b7280;
+    color: white;
+}
+
+/* Timestamp Display */
+.feed-timestamp {
+    color: #6b7280;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Action Buttons */
+.feed-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-feed-action {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.btn-delete {
+    color: #dc2626;
+    border: 1px solid #dc2626;
+    background: transparent;
+}
+
+.btn-delete:hover {
+    background-color: #dc2626;
+    color: white;
+}
+
+/* Empty State */
+.feed-empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+/* Add Feed Form */
+.feed-form {
+    background-color: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.feed-form-title {
+    font-size: 1.125rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    color: #1f2937;
+}
+
+.feed-form-group {
+    margin-bottom: 1rem;
+}
+
+.feed-form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.feed-form-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    transition: border-color 0.2s ease;
+}
+
+.feed-form-input:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
